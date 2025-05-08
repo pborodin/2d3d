@@ -22,6 +22,22 @@ export function calculateWallPolygonVertices(start, end, thicknessL, thicknessR)
     return vertices;
 }
 
+// --- НОВАЯ ЭКСПОРТИРУЕМАЯ функция пересчета 6 вершин ---
+// Использует сохраненные толщины из wallData
+export function recalculateWallVertices(wall) {
+    if (!wall || !wall.vertices || wall.vertices.length !== 6 || wall.thicknessL === undefined || wall.thicknessR === undefined) return false;
+    const start = wall.vertices[0]; // Текущая осевая start
+    const end = wall.vertices[3];   // Текущая осевая end
+    const thicknessL = wall.thicknessL; // Берем сохраненную толщину
+    const thicknessR = wall.thicknessR; // Берем сохраненную толщину
+
+    const newVertices = calculateWallPolygonVertices(start, end, thicknessL, thicknessR);
+    if (newVertices) {
+        wall.vertices = newVertices; // Обновляем массив вершин стены
+        return true;
+    }
+    return false;
+}
 
 // --- Wall Management ---
 export function initializeDefaultWalls() {

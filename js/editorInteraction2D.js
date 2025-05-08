@@ -6,37 +6,14 @@ import { getPointerXY, pointsAreEqual } from './utils.js';
 import { selectObject, deselectEverything, selectWall, selectVertex } from './editorSelection.js';
 // Динамически импортируем editorObjects при необходимости
 
-// --- Вспомогательная функция для пересчета 6 вершин стены ---
-// Ипортируем или определяем здесь. Т.к. она нужна только здесь и в editorObjects,
-// можно вынести в utils.js или оставить пока здесь для локальности.
-// Важно: использует сохраненные wall.thicknessL и wall.thicknessR
-function recalculateWallVertices(wall) {
-    if (!wall || !wall.vertices || wall.vertices.length !== 6 || wall.thicknessL === undefined || wall.thicknessR === undefined) return false;
-    const start = wall.vertices[0]; const end = wall.vertices[3];
-    const thicknessL = wall.thicknessL; const thicknessR = wall.thicknessR;
-    const dx = end.x - start.x; const dz = end.z - start.z;
-    const length = Math.sqrt(dx * dx + dz * dz);
-    if (length < 0.01) return false;
-    const dirX = dx / length; const dirZ = dz / length;
-    const perpX = -dirZ; const perpZ = dirX;
-    // Обновляем весь массив вершин
-    wall.vertices = [
-        { x: start.x, z: start.z },
-        { x: start.x + perpX * thicknessL, z: start.z + perpZ * thicknessL }, // 1
-        { x: end.x + perpX * thicknessL, z: end.z + perpZ * thicknessL },     // 2
-        { x: end.x, z: end.z },
-        { x: end.x - perpX * thicknessR, z: end.z - perpZ * thicknessR },     // 4
-        { x: start.x - perpX * thicknessR, z: start.z - perpZ * thicknessR }  // 5
-    ];
-    return true;
-}
 
-
-// --- Обновленная функция обновления соединенных осевых вершин и пересчета геометрии ---
-function updateConnectedVertices(originalPos, newPos) {
+// --- ИСПРАВЛЕННАЯ async функция обновления соединенных осевых вершин ---
+async function updateConnectedVertices(originalPos, newPos) {
     if (!originalPos || !newPos) return false;
     let overallUpdated = false;
     const affectedWallIds = new Set();
+
+    // Синхронно обновляем осевые точки и собираем ID затронутых стен
     editorState.walls.forEach(wall => {
         if (!wall.vertices || wall.vertices.length !== 6) return;
         let wallAffected = false;
@@ -52,15 +29,31 @@ function updateConnectedVertices(originalPos, newPos) {
                 overallUpdated = true; wallAffected = true;
             }
         }
-        if (wallAffected) {
-            affectedWallIds.add(wall.id);
+        if (wallAffected) affectedWallIds.add(wall.id);
+    });
+
+    // Если осевые точки были обновлены, асинхронно импортируем модуль
+    // и пересчитываем геометрию ВСЕХ затронутых стен
+    if (overallUpdated && affectedWallIds.size > 0) {
+        try {
+            // Динамически импортируем ОДИН РАЗ
+            const editorObjectsModule = await import('./editorObjects.js');
+            // Пересчитываем каждую затронутую стену
+            affectedWallIds.forEach(wallId => {
+                const wall = editorState.walls.find(w => w.id === wallId);
+                if (wall) {
+                    // Вызываем функцию пересчета из импортированного модуля
+                    // Эта функция синхронная, поэтому Promise.all не нужен здесь
+                    editorObjectsModule.recalculateWallVertices(wall);
+                }
+            });
+        } catch (err) {
+            console.error("Failed to load editorObjects.js for recalculating vertices:", err);
+            return false; // Возвращаем false в случае ошибки импорта
         }
-    });
-    affectedWallIds.forEach(wallId => {
-        const wall = editorState.walls.find(w => w.id === wallId);
-        if (wall) recalculateWallVertices(wall);
-    });
-    return overallUpdated;
+    }
+
+    return overallUpdated; // Возвращаем true, если осевые точки изменились
 }
 
 

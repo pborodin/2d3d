@@ -5,6 +5,8 @@ import * as UI from './ui.js';
 import { render2DPlan } from './editorInteraction2D.js';
 import { createOrUpdateAll3DWalls, removeFurnitureById, clearAllFurniture as clearEditorFurniture, clearAllWalls as clearEditorWalls, addWall as addEditorWall } from './editorObjects.js';
 import { getDomElements } from './ui.js';
+// --- ИМПОРТИРУЕМ функцию пересчета ---
+import { recalculateWallVertices } from './editorObjects.js';
 
 
 export function selectObject(object) {
@@ -141,19 +143,47 @@ export function toggleAddWallMode() {
     if (editorState.activeViewMode === 'plan') render2DPlan(); // Redraw to show/hide temp line or cursor change
 }
 
+// --- Обновленная функция изменения свойств стены ---
 export function updateWallPropertiesFromInput() {
-    const dom = getDomElements();
+    const dom = UI.getDomElements(); // Используем getDomElements из UI
     if (editorState.selectedWallId) {
         const wall = editorState.walls.find(w => w.id === editorState.selectedWallId);
         if (wall) {
-            const newThickness = parseFloat(dom.wallThicknessInput.value);
+            let changed = false;
+            // --- ИЗМЕНЕНИЕ: Обновляем только толщину L/R, не общую ---
+            // (Предполагаем, что input'ы названы так, или нужно добавить отдельные)
+            // Если input один (wallThicknessInput), то делим пополам:
+            const newTotalThickness = parseFloat(dom.wallThicknessInput.value);
+            let newThicknessL = wall.thicknessL;
+            let newThicknessR = wall.thicknessR;
+            if (!isNaN(newTotalThickness) && newTotalThickness > 0.01) {
+                // Делим поровну от осевой линии
+                newThicknessL = newTotalThickness / 2;
+                newThicknessR = newTotalThickness / 2;
+                if (Math.abs(wall.thicknessL - newThicknessL) > 1e-6 || Math.abs(wall.thicknessR - newThicknessR) > 1e-6) {
+                    wall.thicknessL = newThicknessL;
+                    wall.thicknessR = newThicknessR;
+                    changed = true;
+                }
+            }
+
+            // Обновляем высоту
             const newHeight = parseFloat(dom.wallHeightInput.value);
+            if (!isNaN(newHeight) && newHeight > 0 && Math.abs(wall.height - newHeight) > 1e-6) {
+                wall.height = newHeight;
+                changed = true;
+            }
 
-            if (!isNaN(newThickness) && newThickness > 0) wall.thickness = newThickness;
-            if (!isNaN(newHeight) && newHeight > 0) wall.height = newHeight;
+            if (changed) {
+                // --- ИСПРАВЛЕНИЕ: Пересчитываем вершины ---
+                const recalculated = recalculateWallVertices(wall);
 
-            createOrUpdateAll3DWalls();
-            if (editorState.activeViewMode === 'plan') render2DPlan();
+                if (recalculated) {
+                    // Обновляем 2D и 3D
+                    import('./editorInteraction2D.js').then(mod => mod.render2DPlan()); // Динамический импорт
+                    import('./editorObjects.js').then(mod => mod.createOrUpdateAll3DWalls()); // Динамический импорт
+                }
+            }
         }
     }
 }
