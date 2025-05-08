@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Совушка ROOM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        .app-container-base {
+            margin: 0 auto;
+            background-color: #24243e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header { padding: 1rem; text-align: center; background-color: #1f1f38; }
+        .header h1 { font-size: 1.5rem; font-weight: 700; color: #ffffff; } 
+        .content { padding: 1.5rem; flex-grow: 1; } 
+        .btn {
+            display: inline-flex; 
+            align-items: center;
+            justify-content: center;
+            width: auto; 
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none; 
+        }
+        .btn-block { 
+            display: flex;
+            width: 100%;
+        }
+        .btn-primary { background-color: #4a90e2; color: #ffffff; }
+        .btn-primary:hover { background-color: #357abd; }
+        .btn-secondary { background-color: #3a3a5a; color: #e0e0e0; }
+        .btn-secondary:hover { background-color: #4a4a6a; }
+        .btn-danger { background-color: #e53e3e; color: #ffffff; }
+        .btn-danger:hover { background-color: #c53030; }
+
+        .checkbox-label { display: flex; align-items: center; padding: 0.75rem; background-color: #2a2a4a; border-radius: 0.5rem; margin-bottom: 0.75rem; cursor: pointer; }
+        .checkbox-label input[type="checkbox"] { accent-color: #4a90e2; margin-right: 0.75rem; width: 1.25rem; height: 1.25rem; }
+        .style-option { background-color: #2a2a4a; border-radius: 0.5rem; padding: 0.5rem; text-align: center; cursor: pointer; transition: background-color 0.3s ease, transform 0.2s ease, border-color 0.3s ease; border: 2px solid transparent; }
+        .style-option.selected { border-color: #4a90e2; background-color: #3a3a5a; transform: scale(1.05); }
+        .style-option img { width: 100%; height: 80px; object-fit: cover; border-radius: 0.25rem; margin-bottom: 0.5rem; background-color: #333; }
+        @media (min-width: 640px) { 
+            .style-option img { height: 100px; }
+        }
+        @media (min-width: 768px) { 
+            .style-option img { height: 120px; }
+        }
+
+        .hidden { display: none !important; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4a90e2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .result-image-container { 
+            position: relative; border: 2px dashed #4a4a6a; border-radius: 0.5rem; 
+            padding: 1rem; margin-bottom: 1rem; 
+            min-height: 200px; 
+            display: flex; align-items: center; justify-content: center; background-color: #2a2a4a; 
+        }
+        .result-image-container img { 
+            max-width: 100%; 
+            max-height: 250px; 
+            border-radius: 0.25rem; object-fit: contain;
+        }
+        @media (min-width: 768px) { 
+            .result-image-container { min-height: 300px; }
+            .result-image-container img { max-height: 350px; }
+            #imagePreviewContainer img { max-height: 300px !important; } 
+        }
+
+        .image-placeholder-text { color: #777790; text-align: center; }
+
+        #screen4, #screen5 { 
+            display: flex; 
+            flex-direction: column; 
+            height: calc(100vh - 70px);  
+            position: relative; 
+        }
+         @media (min-width: 768px) { 
+            #screen4, #screen5 { height: calc(100vh - 86px);  }
+        }
+        
+        #threejs-canvas-container, #plan-canvas-container { 
+            flex-grow: 1; 
+            position: relative; 
+            background-color: #101020; 
+            border-radius: 0.5rem; 
+            overflow: hidden; 
+            touch-action: none; 
+        }
+        #threejs-canvas, #plan-canvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+        }
+        #plan-canvas-container {
+            background-color: #f0f0f0; 
+        }
+
+        .editor-controls-toolbar { 
+            padding: 0.5rem 0;
+            display: flex;
+            gap: 0.5rem; 
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        .editor-controls-toolbar .btn { 
+            padding: 0.5rem; 
+            min-width: 40px; 
+            height: 40px;
+        }
+         .editor-controls-toolbar .btn svg { 
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+        .view-mode-btn-group .btn { 
+            padding: 0.35rem 0.6rem; 
+        }
+
+        .selected-object-controls { 
+            position: absolute;
+            top: 50%; 
+            right: 0.5rem; 
+            transform: translateY(-50%); 
+            padding: 0.5rem;
+            background-color: rgba(36, 36, 62, 0.9); 
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column; 
+            gap: 0.5rem; 
+            z-index: 10; 
+        }
+         .selected-object-controls.hidden { 
+            display: none !important;
+        }
+        .selected-object-controls .btn { 
+            padding: 0.5rem; 
+            min-width: 40px; 
+            height: 40px;
+            width: 40px; 
+        }
+        .selected-object-controls .btn svg {
+             width: 24px;
+             height: 24px;
+             fill: currentColor;
+        }
+        
+        #wallPropertiesPanel { /* Specific styles for wall properties */
+            align-items: stretch; /* Make inputs full width */
+        }
+        #wallPropertiesPanel input {
+            background-color: #3a3a5a; /* Darker input background */
+            border: 1px solid #4a4a6a;
+        }
+
+
+        .instructions {
+            font-size: 0.75rem; 
+            text-align: center;
+            color: #9090a0;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            position: relative; 
+            z-index: 1;
+        }
+
+        /* Стили для экрана сметы (screen5) */
+        #screen5 .content-wrapper { 
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-bottom: 1rem; 
+        }
+        .estimate-item {
+            background-color: #2a2a4a;
+            border-radius: 0.5rem;
+            padding: 0.75rem; 
+            display: flex;
+            align-items: center;
+            gap: 0.75rem; 
+            margin-bottom: 0.75rem; 
+        }
+        .estimate-item-checkbox {
+            accent-color: #4a90e2;
+            width: 1.25rem; 
+            height: 1.25rem; 
+            flex-shrink: 0;
+        }
+        .estimate-item-image {
+            width: 60px; 
+            height: 60px; 
+            object-fit: contain; 
+            background-color: #333; 
+            border-radius: 0.25rem; 
+            flex-shrink: 0;
+        }
+        .estimate-item-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem; 
+        }
+        .estimate-item-name {
+            font-weight: 600; 
+            color: #ffffff;
+            font-size: 0.875rem; 
+        }
+        .estimate-item-sku, .estimate-item-price {
+            font-size: 0.75rem; 
+            color: #a0aec0; 
+        }
+        .estimate-item-price {
+            font-weight: 500; 
+            color: #e0e0e0;
+        }
+        .estimate-item-actions button {
+            background: none;
+            border: none;
+            color: #a0aec0; 
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+        .estimate-item-actions button:hover {
+            color: #ffffff;
+        }
+        .estimate-summary {
+            margin-top: 1.5rem; 
+            padding-top: 1rem; 
+            border-top: 1px solid #3a3a5a;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem; 
+            font-size: 0.875rem; 
+        }
+        .summary-row.total {
+            font-weight: 700; 
+            font-size: 1rem; 
+            color: #ffffff;
+            margin-top: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container-base w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl">
+        <header class="header md:py-6">
+            <h1 class="md:text-2xl">Совушка ROOM</h1>
+        </header>
+        <main class="content md:p-8">
+            <div id="screen1">
+                <h2 class="text-2xl md:text-3xl font-semibold mb-2 text-center text-white">Обновление интерьера</h2>
+                <p class="text-sm md:text-base text-center mb-6 text-gray-400">детской за 30 секунд</p>
+                <div class="bg-gray-700 p-4 md:p-6 rounded-lg mb-6 md:max-w-lg md:mx-auto">
+                    <p class="text-sm md:text-base mb-3 text-gray-300">Загрузите фото комнаты...</p>
+                    <p class="text-sm md:text-base font-semibold mb-1 text-gray-200">Если вы хотите:</p>
+                    <label class="checkbox-label text-sm md:text-base"><input type="checkbox" id="goal_repair">Сделать ремонт</label>
+                    <label class="checkbox-label text-sm md:text-base"><input type="checkbox" id="goal_setup_room">Обустроить первую детскую</label>
+                    <label class="checkbox-label text-sm md:text-base"><input type="checkbox" id="goal_find_furniture">Подобрать мебель</label>
+                </div>
+                <button id="nextToScreen2" class="btn btn-primary btn-block text-base md:text-lg md:py-3">Далее</button>
+            </div>
+
+            <div id="screen2" class="hidden">
+                <h3 class="text-xl md:text-2xl font-semibold mb-3 text-white">Ваша комната</h3>
+                <div id="imagePreviewContainer" class="result-image-container mb-3">
+                    <span class="image-placeholder-text md:text-lg">Предпросмотр фото</span>
+                </div>
+                <input type="file" id="photoUpload" class="hidden" accept="image/*">
+                <button id="uploadButton" class="btn btn-secondary btn-block mb-4 text-base md:text-lg md:py-3">Загрузить фото</button>
+                
+                <h3 class="text-xl md:text-2xl font-semibold mb-4 text-white">Выберите стиль</h3>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+                    <div class="style-option" data-style="minimalism">
+                        <img src="https://images.pexels.com/photos/276724/pexels-photo-276724.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Минимализм">
+                        <p class="text-sm md:text-base">Минимализм</p>
+                    </div>
+                    <div class="style-option" data-style="loft">
+                        <img src="https://images.pexels.com/photos/6434635/pexels-photo-6434635.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Лофт">
+                        <p class="text-sm md:text-base">Лофт</p>
+                    </div>
+                    <div class="style-option" data-style="classic">
+                         <img src="https://images.pexels.com/photos/271816/pexels-photo-271816.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Классика">
+                         <p class="text-sm md:text-base">Классика</p>
+                    </div>
+                    <div class="style-option" data-style="neoclassic">
+                        <img src="https://images.pexels.com/photos/6782470/pexels-photo-6782470.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Неоклассика">
+                        <p class="text-sm md:text-base">Неоклассика</p>
+                    </div>
+                    <div class="style-option" data-style="scandinavian">
+                         <img src="https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Скандинавский">
+                         <p class="text-sm md:text-base">Сканди</p>
+                    </div>
+                    <div class="style-option" data-style="other">
+                        <img src="https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Другое">
+                        <p class="text-sm md:text-base">Другое</p>
+                    </div>
+                </div>
+                <button id="showResultButton" class="btn btn-primary btn-block text-base md:text-lg md:py-3">Показать результат</button>
+                <button id="backToScreen1From2" class="btn btn-secondary btn-block mt-3 text-base md:text-lg md:py-3">Назад</button>
+            </div>
+
+            <div id="screen3" class="hidden">
+                <h2 class="text-2xl md:text-3xl font-semibold mb-4 text-center text-white">Результат <span class="text-yellow-400 text-xl md:text-2xl">✨</span></h2>
+                <div id="loadingIndicator" class="loader hidden"></div>
+                <div id="resultContent">
+                    <p class="text-center text-gray-400 mb-4 text-base md:text-lg">Ваш обновленный интерьер в стиле <strong id="selectedStyleText" class="text-white"></strong>:</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                        <div><h4 class="text-lg md:text-xl font-medium mb-2 text-gray-300">До:</h4><div id="originalImageResult" class="result-image-container"><span class="image-placeholder-text md:text-lg">Фото не загружено</span></div></div>
+                        <div><h4 class="text-lg md:text-xl font-medium mb-2 text-gray-300">После:</h4><div class="result-image-container"><img id="generatedImage" src="https://placehold.co/300x200/777790/FFFFFF?text=Выберите+стиль" alt="Сгенерированный дизайн"></div></div>
+                    </div>
+                </div>
+                <button id="openEditorButton" class="btn btn-secondary btn-block mt-4 md:mt-6 text-base md:text-lg md:py-3">Редактор</button>
+                <button id="startOverButton" class="btn btn-primary btn-block mt-3 text-base md:text-lg md:py-3">Начать заново</button>
+            </div>
+
+            <div id="screen4" class="hidden">
+                <h2 id="editorTitle" class="text-xl md:text-2xl font-semibold text-white text-center">3D Редактор Комнаты</h2>
+                <div class="editor-controls-toolbar md:gap-2">
+                    <div class="view-mode-btn-group flex gap-1 md:gap-2">
+                        <button id="viewMode3D" class="btn btn-secondary md:min-w-[48px] md:h-[48px]" title="3D Вид">3D</button>
+                        <button id="viewModePseudo3D" class="btn btn-secondary md:min-w-[48px] md:h-[48px]" title="2D Вид сверху (псевдо-3D)">2D</button>
+                        <button id="viewModePlan" class="btn btn-secondary md:min-w-[48px] md:h-[48px]" title="2D Чертёж">План</button>
+                    </div>
+                    <div class="w-px h-8 bg-gray-600 mx-1 hidden sm:block"></div> 
+                    <button id="addTableButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Добавить стол">
+                        <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M4 7H20V9H4V7M4 10H20V12H4V10M4 13H20V15H4V13M5 17H7V20H5V17M9 17H11V20H9V17M13 17H15V20H13V17M17 17H19V20H17V17Z"></path></svg>
+                    </button>
+                    <button id="addSofaButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Добавить диван">
+                        <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M20,9H4C2.9,9 2,9.9 2,11V15C2,16.11 2.9,17 4,17H5V20H7V17H17V20H19V17H20C21.1,17 22,16.11 22,15V11C22,9.9 21.1,9 20,9M20,15H4V11H20V15M5,12V14H7V12H5M17,12V14H19V12H17Z"></path></svg>
+                    </button>
+                    <button id="addLampButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Добавить лампу">
+                        <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M12,2C10.34,2 9,3.34 9,5V10H6L12,18L18,10H15V5C15,3.34 13.66,2 12,2M12,20A2,2 0 0,0 14,22H10A2,2 0 0,0 12,20Z"></path></svg>
+                    </button>
+                    <button id="addWallButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Добавить стену">
+                        <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path fill="currentColor" d="M22,11V3H13V5H11V3H2V11H4V21H6V11H8V21H10V11H12V21H14V11H16V21H18V11H20V21H22V11Z M11,11H4V5H11V11Z M20,9H13V7H20V9Z"></path></svg>
+                    </button>
+                     <div class="w-px h-8 bg-gray-600 mx-1 hidden sm:block"></div> 
+                    <button id="openEstimateButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Смета">
+                        <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path fill="currentColor" d="M9,7V10H11V7H9M13,7V10H15V7H13M9,12V15H11V12H9M13,12V15H15V12H13M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"></path></svg>
+                    </button>
+                </div>
+                <div id="selectedObjectControls" class="selected-object-controls hidden md:gap-2">
+                     <button id="rotateLeftButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Повернуть влево">
+                        <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M14.22,2.22L12.78,3.67L15.1,6H10C6.69,6 4,8.69 4,12C4,15.31 6.69,18 10,18H15V20H10C5.58,20 2,16.42 2,12C2,7.58 5.58,4 10,4H15.1L12.78,1.33L14.22,2.22M20,12V14H18V12H20M20,8V10H18V8H20M20,16V18H18V16H20Z" transform="scale(-1,1) translate(-24,0)"></path></svg>
+                    </button>
+                    <button id="rotateRightButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Повернуть вправо">
+                         <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M14.22,2.22L12.78,3.67L15.1,6H10C6.69,6 4,8.69 4,12C4,15.31 6.69,18 10,18H15V20H10C5.58,20 2,16.42 2,12C2,7.58 5.58,4 10,4H15.1L12.78,1.33L14.22,2.22M20,12V14H18V12H20M20,8V10H18V8H20M20,16V18H18V16H20Z"></path></svg>
+                    </button>
+                    <button id="deleteButton" class="btn btn-danger md:min-w-[48px] md:h-[48px] md:p-2.5" title="Удалить">
+                        <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"></path></svg>
+                    </button>
+                </div>
+                <div id="wallPropertiesPanel" class="selected-object-controls hidden md:gap-2" style="flex-direction: column;">
+                    <h4 class="text-xs text-center text-gray-300 mb-1">Свойства стены</h4>
+                    <label class="text-xs text-gray-400">Толщина (м):</label>
+                    <input type="number" id="wallThicknessInput" step="0.01" class="bg-gray-700 text-white text-sm rounded p-1 w-full mb-1">
+                    <label class="text-xs text-gray-400">Высота (м):</label>
+                    <input type="number" id="wallHeightInput" step="0.1" class="bg-gray-700 text-white text-sm rounded p-1 w-full mb-2">
+                    <button id="deleteWallButton" class="btn btn-danger btn-block md:min-w-[auto] md:h-[auto] md:p-1.5 text-xs" title="Удалить стену">
+                        Удалить стену
+                    </button>
+                </div>
+                
+                <div id="threejs-canvas-container">
+                    <canvas id="threejs-canvas"></canvas>
+                </div>
+                <div id="plan-canvas-container" class="hidden">
+                    <canvas id="plan-canvas"></canvas>
+                </div>
+
+                <p class="instructions md:text-sm">Клик/тап для выбора. Перетаскивание для перемещения. Колесико/жест для зума (в 2D Плане).</p>
+                <button id="backToResultsButton" class="btn btn-primary btn-block mt-3 text-base md:text-lg md:py-3">Назад к результатам</button>
+            </div>
+
+            <div id="screen5" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl md:text-2xl font-semibold text-white">Смета помещения</h2>
+                    <button id="closeEstimateButton" class="text-gray-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="content-wrapper">
+                    <div class="flex justify-between items-center mb-3 text-sm">
+                        <div id="estimateItemCountHeader">0 товаров</div>
+                        <button id="removeAllEstimateItems" class="text-red-400 hover:text-red-300 flex items-center gap-1">
+                            Удалить всё
+                            <svg class="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"></path></svg>
+                        </button>
+                    </div>
+                    <label class="checkbox-label mb-3 text-sm">
+                        <input type="checkbox" id="selectAllEstimateItems" class="estimate-item-checkbox">
+                        Выбрать всё
+                    </label>
+
+                    <div id="estimateItemsContainer" class="mb-6">
+                        {/* Сюда будут добавляться элементы сметы */}
+                    </div>
+
+                    <div class="estimate-summary">
+                        <h3 class="text-lg font-semibold mb-3 text-white">Ваш заказ:</h3>
+                        <div class="summary-row">
+                            <span>Количество товаров</span>
+                            <span id="summaryQuantity">0 шт.</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Товары на сумму</span>
+                            <span id="summarySubtotal">0 ₽</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>Итого:</span>
+                            <span id="summaryTotal">0 ₽</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-auto pt-4">
+                    <button id="checkoutButton" class="btn btn-primary btn-block text-base md:text-lg md:py-3 bg-green-500 hover:bg-green-600">Оформить заказ</button>
+                    <button id="checkoutCreditButton" class="btn btn-secondary btn-block mt-3 text-base md:text-lg md:py-3">Оформить заказ в кредит</button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+            <script>
+        // DOM Elements
+        const screens = {
+            s1: document.getElementById('screen1'),
+            s2: document.getElementById('screen2'),
+            s3: document.getElementById('screen3'),
+            s4: document.getElementById('screen4'),
+            s5: document.getElementById('screen5') 
+        };
+        const editorTitle = document.getElementById('editorTitle');
+        const nextToScreen2Button = document.getElementById('nextToScreen2');
+        const backToScreen1From2Button = document.getElementById('backToScreen1From2');
+        const showResultButton = document.getElementById('showResultButton');
+        const startOverButton = document.getElementById('startOverButton');
+        const openEditorButton = document.getElementById('openEditorButton');
+        const backToResultsButton = document.getElementById('backToResultsButton');
+        const uploadButton = document.getElementById('uploadButton');
+        const photoUploadInput = document.getElementById('photoUpload');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const originalImageResult = document.getElementById('originalImageResult');
+        const styleOptions = document.querySelectorAll('.style-option');
+        const selectedStyleText = document.getElementById('selectedStyleText');
+        const generatedImage = document.getElementById('generatedImage');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultContent = document.getElementById('resultContent');
+
+        const threeJSContainer = document.getElementById('threejs-canvas-container');
+        const planCanvasContainer = document.getElementById('plan-canvas-container');
+
+        const viewMode3DButton = document.getElementById('viewMode3D');
+        const viewModePseudo3DButton = document.getElementById('viewModePseudo3D');
+        const viewModePlanButton = document.getElementById('viewModePlan');
+        const viewModeButtons = [viewMode3DButton, viewModePseudo3DButton, viewModePlanButton];
+
+
+        const selectedObjectControls = document.getElementById('selectedObjectControls');
+        const rotateLeftButton = document.getElementById('rotateLeftButton');
+        const rotateRightButton = document.getElementById('rotateRightButton');
+        const deleteButton = document.getElementById('deleteButton'); // Furniture delete
+
+        const wallPropertiesPanel = document.getElementById('wallPropertiesPanel');
+        const wallThicknessInput = document.getElementById('wallThicknessInput');
+        const wallHeightInput = document.getElementById('wallHeightInput');
+        const deleteWallButton = document.getElementById('deleteWallButton');
+        const addWallButton = document.getElementById('addWallButton');
+
+
+        // Новые DOM элементы для экрана сметы
+        const openEstimateButton = document.getElementById('openEstimateButton');
+        const closeEstimateButton = document.getElementById('closeEstimateButton');
+        const estimateItemsContainer = document.getElementById('estimateItemsContainer');
+        const estimateItemCountHeader = document.getElementById('estimateItemCountHeader');
+        const selectAllEstimateItemsCheckbox = document.getElementById('selectAllEstimateItems');
+        const removeAllEstimateItemsButton = document.getElementById('removeAllEstimateItems');
+        const summaryQuantity = document.getElementById('summaryQuantity');
+        const summarySubtotal = document.getElementById('summarySubtotal');
+        const summaryTotal = document.getElementById('summaryTotal');
+        
+        // App State
+        let currentScreen = 1;
+        let selectedStyle = null;
+        let uploadedFile = null;
+        let selectedStyleName = '';
+
+        // --- Editor (Three.js & 2D Plan) ---
+        const threeJSState = {
+            scene: null, camera: null, renderer: null, controls: null,
+            roomFloor: null, furniture: [], walls: [], 
+            animationFrameId: null, isInitialized: false,
+            raycaster: null, pointer: null, selectedObject: null, dragPlane: null,
+            isDragging3D: false, originalSelectionColor: {},
+
+            activeViewMode: '3d',
+            planCanvas: null, planContext: null,
+            planScale: 25,
+            minPlanScale: 5,
+            maxPlanScale: 100,
+            planOrigin: {x: 0, y: 0},
+            isDragging2D: false, dragOffset2D: {x:0, y:0}, 
+            isPanning2D: false,
+            panStart2D: { x: 0, y: 0 },
+            planOriginStart: { x: 0, y: 0 },
+
+            selectedWallId: null, 
+            selectedVertexInfo: null, // { wallId: '...', type: 'start'/'end', initialPosAtDragStart: {x,z}, vertexRef: {x,z} }
+            isDraggingVertex: false, 
+            wallCounter: 0, 
+
+            isAddingWallMode: false,
+            newWallStartPoint: null, // {x,z} in world coordinates for adding new wall
+            currentMouseWorldPos2D: null, // {x,z} for drawing temp new wall line
+
+            isDraggingWall: false,
+            dragOffsetWall: { x: 0, z: 0 }, // For dragging whole wall
+            originalWallDragPoints: { start: null, end: null }, // For dragging whole wall
+
+            defaultCameraPos: new THREE.Vector3(0, 7, 12),
+            defaultCameraLookAt: new THREE.Vector3(0, 0, 0),
+            defaultControlsTarget: new THREE.Vector3(0,0,0),
+            defaultOrbitControls: { minDistance: 3, maxDistance: 40, maxPolarAngle: Math.PI / 2 - 0.05, minPolarAngle: 0, enableRotate: true, enablePan: true, enableZoom: true },
+            pseudo3DCameraPos: new THREE.Vector3(0, 20, 0.01),
+            pseudo3DControls: { enableRotate: false, minPolarAngle: 0, maxPolarAngle: Math.PI * 0.01, minAzimuthAngle: -Infinity, maxAzimuthAngle: Infinity, enablePan: true, enableZoom: true }
+        };
+
+        let lastTouchDistance = null; 
+        const vertexHitRadius = 8; 
+        const wallHitTolerance = 5; 
+        const snapDistance = 0.5; 
+
+        // --- Wall Data Management ---
+        function initializeDefaultWalls() {
+            threeJSState.walls = []; 
+            threeJSState.wallCounter = 0;
+            const w = 10; 
+            const d = 10; 
+            
+            addWall(-w, -d, w, -d); 
+            addWall(w, -d, w, d);  
+            addWall(w, d, -w, d);  
+            addWall(-w, d, -w, -d);
+        }
+
+        function addWall(x1, z1, x2, z2, thickness, height) {
+            threeJSState.wallCounter++;
+            const wallData = {
+                id: 'wall-' + threeJSState.wallCounter,
+                start: { x: x1, z: z1 },
+                end: { x: x2, z: z2 },
+                thickness: thickness === undefined ? 0.2 : thickness,
+                height: height === undefined ? 2.5 : height,
+                threeMesh: null 
+            };
+            threeJSState.walls.push(wallData);
+            return wallData;
+        }
+        
+        function pointsAreEqual(p1, p2, tolerance = 0.001) {
+            if (!p1 || !p2) return false;
+            return Math.abs(p1.x - p2.x) < tolerance && Math.abs(p1.z - p2.z) < tolerance;
+        }
+
+
+        // --- Navigation ---
+        function navigateTo(screenNumber) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            loadingIndicator.classList.add('hidden'); resultContent.classList.remove('hidden');
+            const targetScreen = screens[`s${screenNumber}`]; if (targetScreen) targetScreen.classList.remove('hidden');
+            if (screenNumber === 4) { ensureEditorInitialized(); if (threeJSState.activeViewMode === 'plan') switchToPlanView(false); else if (threeJSState.activeViewMode === 'pseudo3d') switchToPseudo3DView(false); else switchTo3DView(false); onWindowResize(); }
+            else if (screenNumber === 5) { if (threeJSState.isInitialized && threeJSState.animationFrameId) { cancelAnimationFrame(threeJSState.animationFrameId); threeJSState.animationFrameId = null; } renderEstimateScreen(); }
+            else { if (threeJSState.isInitialized && threeJSState.animationFrameId) { cancelAnimationFrame(threeJSState.animationFrameId); threeJSState.animationFrameId = null; } }
+            currentScreen = screenNumber; window.scrollTo(0, 0);
+        }
+        openEditorButton.addEventListener('click', () => { threeJSState.activeViewMode = '3d'; navigateTo(4); });
+        backToResultsButton.addEventListener('click', () => { navigateTo(3); });
+        startOverButton.addEventListener('click', () => {
+            selectedStyle = null; selectedStyleName = ''; uploadedFile = null; photoUploadInput.value = null;
+            imagePreviewContainer.innerHTML = '<span class="image-placeholder-text md:text-lg">Предпросмотр фото</span>'; originalImageResult.innerHTML = '<span class="image-placeholder-text md:text-lg">Ваше фото не загружено</span>';
+            generatedImage.src = 'https://placehold.co/300x200/777790/FFFFFF?text=Выберите+стиль'; styleOptions.forEach(opt => opt.classList.remove('selected'));
+            document.querySelectorAll('#screen1 input[type="checkbox"]').forEach(cb => cb.checked = false); clearThreeJSScene(); initializeDefaultWalls();
+            deselectObject(); threeJSState.activeViewMode = '3d'; threeJSState.planScale = 25; navigateTo(1);
+        });
+        nextToScreen2Button.addEventListener('click', () => navigateTo(2));
+        backToScreen1From2Button.addEventListener('click', () => navigateTo(1));
+        showResultButton.addEventListener('click', () => {
+            let valid = true; if (!uploadedFile) { valid = false; alert("Пожалуйста, загрузите фото комнаты."); }
+            if (!selectedStyle) { valid = false; alert("Пожалуйста, выберите стиль."); }
+            if (valid) { navigateTo(3); displayResults(); }
+        });
+
+        // --- Photo Upload & Style Selection ---
+        uploadButton.addEventListener('click', () => photoUploadInput.click());
+        photoUploadInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (file) { uploadedFile = file; const reader = new FileReader(); reader.onload = (e) => { const imgHTML = `<img src="${e.target.result}" alt="Предпросмотр фото" class="max-w-full rounded-md object-contain" style="max-height: inherit;">`; imagePreviewContainer.innerHTML = imgHTML; }; reader.readAsDataURL(file); } });
+        styleOptions.forEach(option => { option.addEventListener('click', () => { styleOptions.forEach(opt => opt.classList.remove('selected')); option.classList.add('selected'); selectedStyle = option.dataset.style; selectedStyleName = option.querySelector('p').textContent; const styleImage = option.querySelector('img').src; generatedImage.src = styleImage; }); });
+        function displayResults() { loadingIndicator.classList.remove('hidden'); resultContent.classList.add('hidden'); setTimeout(() => { selectedStyleText.textContent = selectedStyleName || 'Не выбран'; if (uploadedFile) { const reader = new FileReader(); reader.onload = (e) => { originalImageResult.innerHTML = `<img src="${e.target.result}" alt="Оригинальное фото" class="max-w-full rounded-md object-contain" style="max-height: inherit;">`; }; reader.readAsDataURL(uploadedFile); } else { originalImageResult.innerHTML = '<span class="image-placeholder-text md:text-lg">Фото не загружено</span>'; } if(!selectedStyle) { generatedImage.src = 'https://placehold.co/300x200/777790/FFFFFF?text=Выберите+стиль'; } loadingIndicator.classList.add('hidden'); resultContent.classList.remove('hidden'); }, 1500); }
+
+        // --- Initialization ---
+        function ensureEditorInitialized() { if (!threeJSState.isInitialized) { initThreeJSCore(); init2DPlanCanvas(); threeJSState.isInitialized = true; } }
+        function initThreeJSCore() { const canvas = document.getElementById('threejs-canvas'); if (!threeJSContainer || !canvas) return; threeJSState.scene = new THREE.Scene(); threeJSState.scene.background = new THREE.Color(0x24243e); threeJSState.camera = new THREE.PerspectiveCamera(60, threeJSContainer.clientWidth / threeJSContainer.clientHeight, 0.1, 1000); threeJSState.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); threeJSState.renderer.setSize(threeJSContainer.clientWidth, threeJSContainer.clientHeight); threeJSState.renderer.setPixelRatio(window.devicePixelRatio); threeJSState.renderer.shadowMap.enabled = true; const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); threeJSState.scene.add(ambientLight); const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9); directionalLight.position.set(8, 15, 10); directionalLight.castShadow = true; threeJSState.scene.add(directionalLight); threeJSState.controls = new THREE.OrbitControls(threeJSState.camera, threeJSState.renderer.domElement); threeJSState.controls.enableDamping = true; const floorGeometry = new THREE.PlaneGeometry(20, 20); const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x777777, side: THREE.DoubleSide }); threeJSState.roomFloor = new THREE.Mesh(floorGeometry, floorMaterial); threeJSState.roomFloor.rotation.x = -Math.PI / 2; threeJSState.roomFloor.receiveShadow = true; threeJSState.roomFloor.name = "floor"; threeJSState.scene.add(threeJSState.roomFloor); threeJSState.raycaster = new THREE.Raycaster(); threeJSState.pointer = new THREE.Vector2(); threeJSState.dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); threeJSContainer.addEventListener('pointerdown', on3DPointerDown); threeJSContainer.addEventListener('pointermove', on3DPointerMove); threeJSContainer.addEventListener('pointerup', on3DPointerUp); window.addEventListener('resize', onWindowResize); }
+        function init2DPlanCanvas() { threeJSState.planCanvas = document.getElementById('plan-canvas'); if (!planCanvasContainer || !threeJSState.planCanvas) return; threeJSState.planContext = threeJSState.planCanvas.getContext('2d'); resize2DPlanCanvas(); threeJSState.planCanvas.addEventListener('pointerdown', on2DPlanPointerDown); threeJSState.planCanvas.addEventListener('pointermove', on2DPlanPointerMove); threeJSState.planCanvas.addEventListener('pointerup', on2DPlanPointerUp); threeJSState.planCanvas.addEventListener('wheel', on2DPlanWheel, { passive: false }); threeJSState.planCanvas.addEventListener('touchstart', on2DPlanTouchStart, { passive: false }); threeJSState.planCanvas.addEventListener('touchmove', on2DPlanTouchMove, { passive: false }); threeJSState.planCanvas.addEventListener('touchend', on2DPlanTouchEnd); threeJSState.planCanvas.addEventListener('contextmenu', (event) => { if (threeJSState.activeViewMode === 'plan') { event.preventDefault(); } }); }
+        function resize2DPlanCanvas() { if (!threeJSState.planCanvas || !planCanvasContainer.clientWidth || !planCanvasContainer.clientHeight) return; if (planCanvasContainer.clientWidth === 0 || planCanvasContainer.clientHeight === 0) return; threeJSState.planCanvas.width = planCanvasContainer.clientWidth; threeJSState.planCanvas.height = planCanvasContainer.clientHeight; threeJSState.planOrigin = { x: threeJSState.planCanvas.width / 2, y: threeJSState.planCanvas.height / 2 }; if (threeJSState.activeViewMode === 'plan') render2DPlan(); }
+        function onWindowResize() { if (threeJSContainer.offsetParent !== null && threeJSState.renderer && threeJSState.camera && threeJSContainer.clientWidth) { threeJSState.camera.aspect = threeJSContainer.clientWidth / threeJSContainer.clientHeight; threeJSState.camera.updateProjectionMatrix(); threeJSState.renderer.setSize(threeJSContainer.clientWidth, threeJSContainer.clientHeight); } if (planCanvasContainer.offsetParent !== null) { resize2DPlanCanvas(); } }
+        function animateThreeJS() { if (threeJSState.activeViewMode === 'plan') return; threeJSState.animationFrameId = requestAnimationFrame(animateThreeJS); if (threeJSState.controls) threeJSState.controls.update(); if (threeJSState.renderer && threeJSState.scene && threeJSState.camera) { threeJSState.renderer.render(threeJSState.scene, threeJSState.camera); } }
+
+        // --- 3D Walls Creation ---
+        function createOrUpdate3DWalls() { if (!threeJSState.scene) return; threeJSState.walls.forEach(wall => { if (wall.threeMesh) { threeJSState.scene.remove(wall.threeMesh); if (wall.threeMesh.geometry) wall.threeMesh.geometry.dispose(); if (wall.threeMesh.material) { if(Array.isArray(wall.threeMesh.material)) wall.threeMesh.material.forEach(m=>m?.dispose()); else wall.threeMesh.material?.dispose(); } wall.threeMesh = null; } }); const wallMaterial3D = new THREE.MeshStandardMaterial({ color: 0xa0a0a0, side: THREE.DoubleSide }); threeJSState.walls.forEach(wall => { const start = wall.start; const end = wall.end; const dx = end.x - start.x; const dz = end.z - start.z; const length = Math.sqrt(dx * dx + dz * dz); const angle = Math.atan2(dz, dx); if (length < 0.01) return; const wallGeometry = new THREE.BoxGeometry(length, wall.height, wall.thickness); const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial3D.clone()); wallMesh.position.set( start.x + dx / 2, wall.height / 2, start.z + dz / 2 ); wallMesh.rotation.y = -angle; wallMesh.castShadow = true; wallMesh.receiveShadow = true; wallMesh.userData.wallId = wall.id; threeJSState.scene.add(wallMesh); wall.threeMesh = wallMesh; }); }
+
+        // --- 3D Interaction ---
+        function get3DPointerPosition(event) { const rect = threeJSContainer.getBoundingClientRect(); const x = ((event.clientX || event.touches[0].clientX) - rect.left) / rect.width * 2 - 1; const y = -(((event.clientY || event.touches[0].clientY) - rect.top) / rect.height) * 2 + 1; return {x, y}; }
+        function on3DPointerDown(event) { if (threeJSState.activeViewMode === 'plan') return; const pos = get3DPointerPosition(event); threeJSState.pointer.set(pos.x, pos.y); threeJSState.raycaster.setFromCamera(threeJSState.pointer, threeJSState.camera); const intersectsFurniture = threeJSState.raycaster.intersectObjects(threeJSState.furniture, true); if (intersectsFurniture.length > 0) { let clickedObject = intersectsFurniture[0].object; while (clickedObject.parent && clickedObject.parent !== threeJSState.scene && !clickedObject.userData.itemData) { clickedObject = clickedObject.parent; } if (clickedObject.userData.itemData) { if (threeJSState.selectedObject !== clickedObject) { deselectObject(); selectObject(clickedObject); } threeJSState.isDragging3D = true; if (threeJSState.controls) threeJSState.controls.enabled = false; threeJSState.dragPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0, 1, 0), clickedObject.position); } else { deselectObject(); } } else { const intersectsFloor = threeJSState.raycaster.intersectObject(threeJSState.roomFloor); if (intersectsFloor.length > 0) { deselectObject(); } } }
+        function on3DPointerMove(event) { if (threeJSState.activeViewMode === 'plan' || !threeJSState.isDragging3D || !threeJSState.selectedObject) return; const pos = get3DPointerPosition(event); threeJSState.pointer.set(pos.x, pos.y); threeJSState.raycaster.setFromCamera(threeJSState.pointer, threeJSState.camera); const intersectionPoint = new THREE.Vector3(); threeJSState.raycaster.ray.intersectPlane(threeJSState.dragPlane, intersectionPoint); if (intersectionPoint) { const halfFloorSize = 10 - 1; threeJSState.selectedObject.position.x = Math.max(-halfFloorSize, Math.min(halfFloorSize, intersectionPoint.x)); threeJSState.selectedObject.position.z = Math.max(-halfFloorSize, Math.min(halfFloorSize, intersectionPoint.z)); } }
+        function on3DPointerUp() { if (threeJSState.activeViewMode === 'plan') return; threeJSState.isDragging3D = false; if (threeJSState.controls) threeJSState.controls.enabled = true; }
+
+        // --- 2D Plan Interaction & Rendering ---
+        function on2DPlanWheel(event) { event.preventDefault(); if (threeJSState.activeViewMode !== 'plan') return; const zoomSensitivity = 0.001; const oldScale = threeJSState.planScale; let newScale = oldScale - event.deltaY * zoomSensitivity * oldScale; newScale = Math.max(threeJSState.minPlanScale, Math.min(threeJSState.maxPlanScale, newScale)); if (Math.abs(newScale - oldScale) < 0.0001) return; const rect = threeJSState.planCanvas.getBoundingClientRect(); const mouseXCanvas = event.clientX - rect.left; const mouseYCanvas = event.clientY - rect.top; const worldXBefore = (mouseXCanvas - threeJSState.planOrigin.x) / oldScale; const worldZBefore = (mouseYCanvas - threeJSState.planOrigin.y) / oldScale; threeJSState.planScale = newScale; threeJSState.planOrigin.x = mouseXCanvas - worldXBefore * threeJSState.planScale; threeJSState.planOrigin.y = mouseYCanvas - worldZBefore * threeJSState.planScale; render2DPlan(); }
+        function on2DPlanTouchStart(event) { if (threeJSState.activeViewMode !== 'plan') return; if (event.touches.length === 1) { event.preventDefault(); threeJSState.isPanning2D = true; threeJSState.panStart2D.x = event.touches[0].clientX; threeJSState.panStart2D.y = event.touches[0].clientY; threeJSState.planOriginStart.x = threeJSState.planOrigin.x; threeJSState.planOriginStart.y = threeJSState.planOrigin.y; lastTouchDistance = null; } else if (event.touches.length === 2) { event.preventDefault(); const dx = event.touches[0].clientX - event.touches[1].clientX; const dy = event.touches[0].clientY - event.touches[1].clientY; lastTouchDistance = Math.sqrt(dx * dx + dy * dy); threeJSState.isPanning2D = false; } else { lastTouchDistance = null; threeJSState.isPanning2D = false; } }
+        function on2DPlanTouchMove(event) { if (threeJSState.activeViewMode !== 'plan') return; if (event.touches.length === 1 && threeJSState.isPanning2D) { event.preventDefault(); const deltaX = event.touches[0].clientX - threeJSState.panStart2D.x; const deltaY = event.touches[0].clientY - threeJSState.panStart2D.y; threeJSState.planOrigin.x = threeJSState.planOriginStart.x + deltaX; threeJSState.planOrigin.y = threeJSState.planOriginStart.y + deltaY; render2DPlan(); } else if (event.touches.length === 2 && lastTouchDistance !== null) { event.preventDefault(); const dx = event.touches[0].clientX - event.touches[1].clientX; const dy = event.touches[0].clientY - event.touches[1].clientY; const currentTouchDistance = Math.sqrt(dx * dx + dy * dy); const zoomFactor = currentTouchDistance / lastTouchDistance; const oldScale = threeJSState.planScale; let newScale = oldScale * zoomFactor; newScale = Math.max(threeJSState.minPlanScale, Math.min(threeJSState.maxPlanScale, newScale)); if (Math.abs(newScale - oldScale) < 0.0001) { lastTouchDistance = currentTouchDistance; return; } const rect = threeJSState.planCanvas.getBoundingClientRect(); const touchMidXCanvas = (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left; const touchMidYCanvas = (event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top; const worldXBefore = (touchMidXCanvas - threeJSState.planOrigin.x) / oldScale; const worldZBefore = (touchMidYCanvas - threeJSState.planOrigin.y) / oldScale; threeJSState.planScale = newScale; lastTouchDistance = currentTouchDistance; threeJSState.planOrigin.x = touchMidXCanvas - worldXBefore * threeJSState.planScale; threeJSState.planOrigin.y = touchMidYCanvas - worldZBefore * threeJSState.planScale; render2DPlan(); } }
+        function on2DPlanTouchEnd(event) { if (threeJSState.activeViewMode !== 'plan') return; lastTouchDistance = null; threeJSState.isPanning2D = false; }
+        
+        function render2DPlan() { 
+            if (!threeJSState.planContext || !threeJSState.planCanvas || !threeJSState.planCanvas.width || !threeJSState.planCanvas.height) return; 
+            const ctx = threeJSState.planContext; const canvas = threeJSState.planCanvas; 
+            const scale = threeJSState.planScale; const origin = threeJSState.planOrigin; 
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            
+            ctx.save(); 
+            ctx.translate(origin.x, origin.y); 
+            ctx.lineCap = "round"; 
+            
+            threeJSState.walls.forEach(wall => { 
+                const startX = wall.start.x * scale; const startY = wall.start.z * scale; 
+                const endX = wall.end.x * scale; const endY = wall.end.z * scale; 
+                if (threeJSState.selectedWallId === wall.id) { ctx.strokeStyle = "#4a90e2"; ctx.lineWidth = Math.max(3, wall.thickness * scale + 1); } 
+                else { ctx.strokeStyle = "#555"; ctx.lineWidth = Math.max(2, wall.thickness * scale); } 
+                ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(endX, endY); ctx.stroke(); 
+            }); 
+            
+            threeJSState.furniture.forEach(item => { 
+                const itemPlanDim = item.userData.planDimensions; if (!itemPlanDim) return; 
+                const x = item.position.x * scale; const z = item.position.z * scale; 
+                const rotation = item.rotation.y; 
+                ctx.save(); ctx.translate(x, z); ctx.rotate(rotation); 
+                ctx.strokeStyle = "#333"; ctx.fillStyle = "#e0e0e0"; ctx.lineWidth = 1; 
+                if (item === threeJSState.selectedObject) { ctx.strokeStyle = "#00ced1"; ctx.lineWidth = 2; } 
+                if (itemPlanDim.shape === 'rect') { const w = itemPlanDim.width * scale; const d = itemPlanDim.depth * scale; ctx.fillRect(-w / 2, -d / 2, w, d); ctx.strokeRect(-w / 2, -d / 2, w, d); } 
+                else if (itemPlanDim.shape === 'circle') { const r = itemPlanDim.radius * scale; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); } 
+                ctx.restore(); 
+            }); 
+
+            if (threeJSState.isAddingWallMode && threeJSState.newWallStartPoint && threeJSState.currentMouseWorldPos2D) {
+                ctx.beginPath();
+                ctx.moveTo(threeJSState.newWallStartPoint.x * scale, threeJSState.newWallStartPoint.z * scale);
+                
+                let tempEndX = threeJSState.currentMouseWorldPos2D.x;
+                let tempEndZ = threeJSState.currentMouseWorldPos2D.z;
+                let snapped = false;
+
+                for (const wall of threeJSState.walls) {
+                    if (Math.hypot(tempEndX - wall.start.x, tempEndZ - wall.start.z) < snapDistance) {
+                        tempEndX = wall.start.x; tempEndZ = wall.start.z; snapped = true; break;
+                    }
+                    if (Math.hypot(tempEndX - wall.end.x, tempEndZ - wall.end.z) < snapDistance) {
+                        tempEndX = wall.end.x; tempEndZ = wall.end.z; snapped = true; break;
+                    }
+                }
+                if (!snapped) {
+                    if (Math.abs(tempEndX - threeJSState.newWallStartPoint.x) < snapDistance) {
+                        tempEndX = threeJSState.newWallStartPoint.x;
+                    }
+                    if (Math.abs(tempEndZ - threeJSState.newWallStartPoint.z) < snapDistance) {
+                        tempEndZ = threeJSState.newWallStartPoint.z;
+                    }
+                }
+                ctx.lineTo(tempEndX * scale, tempEndZ * scale);
+                ctx.strokeStyle = 'rgba(74, 144, 226, 0.7)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            ctx.restore(); // Restore from translate(origin.x, origin.y)
+            drawVertices(ctx, scale, origin); // Draw vertices in canvas coordinates
+        }
+
+        function drawVertices(ctx, scale, origin) { 
+            const radiusPx = vertexHitRadius / 2; 
+            ctx.lineWidth = 1; 
+            threeJSState.walls.forEach(wall => { 
+                const startX = wall.start.x * scale + origin.x; const startY = wall.start.z * scale + origin.y; 
+                const endX = wall.end.x * scale + origin.x; const endY = wall.end.z * scale + origin.y; 
+                ctx.beginPath(); ctx.arc(startX, startY, radiusPx, 0, Math.PI * 2); 
+                ctx.fillStyle = (threeJSState.selectedVertexInfo?.wallId === wall.id && threeJSState.selectedVertexInfo?.type === 'start') ? '#ff00ff' : '#4a90e2'; 
+                ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.stroke(); 
+                ctx.beginPath(); ctx.arc(endX, endY, radiusPx, 0, Math.PI * 2); 
+                ctx.fillStyle = (threeJSState.selectedVertexInfo?.wallId === wall.id && threeJSState.selectedVertexInfo?.type === 'end') ? '#ff00ff' : '#4a90e2'; 
+                ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.stroke(); 
+            }); 
+        }
+
+        function get2DPlanPointerPosition(event) { const rect = threeJSState.planCanvas.getBoundingClientRect(); const canvasX = (event.clientX || event.touches[0].clientX)  - rect.left; const canvasY = (event.clientY || event.touches[0].clientY) - rect.top; const worldX = (canvasX - threeJSState.planOrigin.x) / threeJSState.planScale; const worldZ = (canvasY - threeJSState.planOrigin.y) / threeJSState.planScale; return { x: worldX, z: worldZ, canvasX, canvasY }; }
+        function isPointNearWall(px, py, wall, scale, origin, tolerance) { const x1 = wall.start.x * scale + origin.x; const y1 = wall.start.z * scale + origin.y; const x2 = wall.end.x * scale + origin.x; const y2 = wall.end.z * scale + origin.y; const dx = x2 - x1; const dy = y2 - y1; const lenSq = dx * dx + dy * dy; if (lenSq < 0.0001) return false; let t = ((px - x1) * dx + (py - y1) * dy) / lenSq; t = Math.max(0, Math.min(1, t)); const closestX = x1 + t * dx; const closestY = y1 + t * dy; const distSq = (px - closestX) * (px - closestX) + (py - closestY) * (py - closestY); return distSq <= tolerance * tolerance; }
+
+        function on2DPlanPointerDown(event) {
+            if (threeJSState.activeViewMode !== 'plan') return;
+            const pos = get2DPlanPointerPosition(event);
+            let hitDetected = false; let hitObject = null; let hitVertexInfo = null; let hitWall = null;
+
+            threeJSState.isDragging2D = false; 
+            threeJSState.isPanning2D = false; 
+            threeJSState.isDraggingVertex = false;
+            threeJSState.isDraggingWall = false;
+
+            if (threeJSState.isAddingWallMode && event.button === 0) {
+                if (!threeJSState.newWallStartPoint) {
+                    let startX = pos.x; let startZ = pos.z; let snapped = false;
+                    for (const wall of threeJSState.walls) {
+                        if (Math.hypot(startX - wall.start.x, startZ - wall.start.z) < snapDistance) {
+                            startX = wall.start.x; startZ = wall.start.z; snapped = true; break;
+                        }
+                        if (Math.hypot(startX - wall.end.x, startZ - wall.end.z) < snapDistance) {
+                            startX = wall.end.x; startZ = wall.end.z; snapped = true; break;
+                        }
+                    }
+                    threeJSState.newWallStartPoint = { x: startX, z: startZ };
+                } else {
+                    // Second click logic is in on2DPlanPointerUp
+                }
+                hitDetected = true; 
+                render2DPlan();
+                return; 
+            }
+            
+            // 1. Check furniture
+            for (let i = threeJSState.furniture.length - 1; i >= 0; i--) { const item = threeJSState.furniture[i]; const itemPlanDim = item.userData.planDimensions; if (!itemPlanDim) continue; const dx = pos.x - item.position.x; const dz = pos.z - item.position.z; const localX = dx * Math.cos(-item.rotation.y) - dz * Math.sin(-item.rotation.y); const localZ = dx * Math.sin(-item.rotation.y) + dz * Math.cos(-item.rotation.y); if (itemPlanDim.shape === 'rect') { if (Math.abs(localX) <= itemPlanDim.width / 2 && Math.abs(localZ) <= itemPlanDim.depth / 2) { hitObject = item; break; } } else if (itemPlanDim.shape === 'circle') { if (localX * localX + localZ * localZ <= itemPlanDim.radius * itemPlanDim.radius) { hitObject = item; break; } } }
+            if (hitObject && event.button === 0) {
+                if (threeJSState.selectedObject !== hitObject) { deselectObject(); selectObject(hitObject); }
+                threeJSState.isDragging2D = true; threeJSState.dragOffset2D = { x: hitObject.position.x - pos.x, z: hitObject.position.z - pos.z }; hitDetected = true;
+            }
+
+            // 2. Check vertices if no furniture hit
+            if (!hitDetected && event.button === 0) {
+                 for (const wall of threeJSState.walls) { 
+                    const startXCanvas = wall.start.x * threeJSState.planScale + threeJSState.planOrigin.x; 
+                    const startYCanvas = wall.start.z * threeJSState.planScale + threeJSState.planOrigin.y; 
+                    const endXCanvas = wall.end.x * threeJSState.planScale + threeJSState.planOrigin.x; 
+                    const endYCanvas = wall.end.z * threeJSState.planScale + threeJSState.planOrigin.y; 
+                    if ((pos.canvasX - startXCanvas)**2 + (pos.canvasY - startYCanvas)**2 <= vertexHitRadius**2) { 
+                        hitVertexInfo = { wallId: wall.id, type: 'start', initialPosAtDragStart: { ...wall.start }, vertexRef: wall.start }; break; 
+                    } if ((pos.canvasX - endXCanvas)**2 + (pos.canvasY - endYCanvas)**2 <= vertexHitRadius**2) { 
+                        hitVertexInfo = { wallId: wall.id, type: 'end', initialPosAtDragStart: { ...wall.end }, vertexRef: wall.end }; break; 
+                    } 
+                }
+                 if (hitVertexInfo) { deselectObject(); selectVertex(hitVertexInfo); threeJSState.isDraggingVertex = true; hitDetected = true; }
+            }
+            
+             // 3. Check walls for dragging or selection
+            if (!hitDetected && event.button === 0) {
+                 for (const wall of threeJSState.walls) { if (isPointNearWall(pos.canvasX, pos.canvasY, wall, threeJSState.planScale, threeJSState.planOrigin, wallHitTolerance)) { hitWall = wall; break; } }
+                 if (hitWall) { 
+                    deselectObject(); 
+                    selectWall(hitWall.id); 
+                    hitDetected = true; 
+                    threeJSState.isDraggingWall = true;
+                    const wallCenterX = (hitWall.start.x + hitWall.end.x) / 2;
+                    const wallCenterZ = (hitWall.start.z + hitWall.end.z) / 2;
+                    threeJSState.dragOffsetWall = { x: wallCenterX - pos.x, z: wallCenterZ - pos.z };
+                    threeJSState.originalWallDragPoints = { start: { ...hitWall.start }, end: { ...hitWall.end } };
+                }
+            }
+
+            // 4. Handle remaining cases (deselect or pan)
+            if (!hitDetected) {
+                 if (event.button === 0) { deselectObject(); }
+                 else if (event.button === 2 || (event.touches && event.touches.length === 1) ) { // Allow panning with right click or single touch if nothing else hit
+                    event.preventDefault(); 
+                    deselectObject(); 
+                    threeJSState.isPanning2D = true; 
+                    threeJSState.panStart2D.x = event.clientX || event.touches[0].clientX; 
+                    threeJSState.panStart2D.y = event.clientY || event.touches[0].clientY; 
+                    threeJSState.planOriginStart.x = threeJSState.planOrigin.x; 
+                    threeJSState.planOriginStart.y = threeJSState.planOrigin.y; 
+                }
+            }
+            render2DPlan();
+        }
+
+        function on2DPlanPointerMove(event) {
+            if (threeJSState.activeViewMode !== 'plan') return;
+            const pos = get2DPlanPointerPosition(event);
+
+            if (threeJSState.isDraggingVertex && threeJSState.selectedVertexInfo) {
+                const { wallId: SVIwallId, type: SVIvertexType, initialPosAtDragStart, vertexRef } = threeJSState.selectedVertexInfo;
+                
+                let targetX = pos.x; let targetZ = pos.z;
+                const draggingWall = threeJSState.walls.find(w => w.id === SVIwallId);
+                let snapped = false;
+
+                for (const wall of threeJSState.walls) {
+                    if (wall.id === SVIwallId) continue;
+                    if (Math.hypot(targetX - wall.start.x, targetZ - wall.start.z) < snapDistance) {
+                        targetX = wall.start.x; targetZ = wall.start.z; snapped = true; break;
+                    }
+                    if (Math.hypot(targetX - wall.end.x, targetZ - wall.end.z) < snapDistance) {
+                        targetX = wall.end.x; targetZ = wall.end.z; snapped = true; break;
+                    }
+                }
+                if (draggingWall && !snapped) {
+                    const otherVertex = (SVIvertexType === 'start') ? draggingWall.end : draggingWall.start;
+                    if (Math.abs(targetX - otherVertex.x) < snapDistance) { targetX = otherVertex.x; snapped = true; }
+                    if (Math.abs(targetZ - otherVertex.z) < snapDistance) { targetZ = otherVertex.z; snapped = true; }
+                }
+                let newX = targetX; let newZ = targetZ;
+
+                if (vertexRef) { vertexRef.x = newX; vertexRef.z = newZ; }
+
+                threeJSState.walls.forEach(currentWall => {
+                    if (currentWall.id === SVIwallId) return;
+                    if (pointsAreEqual(currentWall.start, initialPosAtDragStart)) {
+                        currentWall.start.x = newX; currentWall.start.z = newZ;
+                    }
+                    if (pointsAreEqual(currentWall.end, initialPosAtDragStart)) {
+                        currentWall.end.x = newX; currentWall.end.z = newZ;
+                    }
+                });
+                threeJSState.selectedVertexInfo.initialPosAtDragStart = { x: newX, z: newZ };
+                render2DPlan();
+                createOrUpdate3DWalls();
+            } else if (threeJSState.isDraggingWall && threeJSState.selectedWallId) {
+                const draggedWall = threeJSState.walls.find(w => w.id === threeJSState.selectedWallId);
+                if (!draggedWall) { threeJSState.isDraggingWall = false; return; }
+
+                const newWallCenterX = pos.x + threeJSState.dragOffsetWall.x;
+                const newWallCenterZ = pos.z + threeJSState.dragOffsetWall.z;
+                const oldWallCenterX = (threeJSState.originalWallDragPoints.start.x + threeJSState.originalWallDragPoints.end.x) / 2;
+                const oldWallCenterZ = (threeJSState.originalWallDragPoints.start.z + threeJSState.originalWallDragPoints.end.z) / 2;
+                const deltaX = newWallCenterX - oldWallCenterX;
+                const deltaZ = newWallCenterZ - oldWallCenterZ;
+
+                const newStart = { x: threeJSState.originalWallDragPoints.start.x + deltaX, z: threeJSState.originalWallDragPoints.start.z + deltaZ };
+                const newEnd = { x: threeJSState.originalWallDragPoints.end.x + deltaX, z: threeJSState.originalWallDragPoints.end.z + deltaZ };
+                
+                draggedWall.start.x = newStart.x; draggedWall.start.z = newStart.z;
+                draggedWall.end.x = newEnd.x; draggedWall.end.z = newEnd.z;
+
+                threeJSState.walls.forEach(otherWall => {
+                    if (otherWall.id === draggedWall.id) return;
+                    if (pointsAreEqual(otherWall.start, threeJSState.originalWallDragPoints.start)) {
+                        otherWall.start.x = newStart.x; otherWall.start.z = newStart.z;
+                    } else if (pointsAreEqual(otherWall.start, threeJSState.originalWallDragPoints.end)) {
+                        otherWall.start.x = newEnd.x; otherWall.start.z = newEnd.z;
+                    }
+                    if (pointsAreEqual(otherWall.end, threeJSState.originalWallDragPoints.start)) {
+                        otherWall.end.x = newStart.x; otherWall.end.z = newStart.z;
+                    } else if (pointsAreEqual(otherWall.end, threeJSState.originalWallDragPoints.end)) {
+                        otherWall.end.x = newEnd.x; otherWall.end.z = newEnd.z;
+                    }
+                });
+                render2DPlan();
+                createOrUpdate3DWalls();
+            } else if (threeJSState.isDragging2D && threeJSState.selectedObject) { 
+                const halfFloorSize = 10 - 1; const targetX = pos.x + threeJSState.dragOffset2D.x; const targetZ = pos.z + threeJSState.dragOffset2D.z;
+                 threeJSState.selectedObject.position.x = Math.max(-halfFloorSize, Math.min(halfFloorSize, targetX)); threeJSState.selectedObject.position.z = Math.max(-halfFloorSize, Math.min(halfFloorSize, targetZ));
+                render2DPlan();
+            } else if (threeJSState.isPanning2D) { 
+                const currentX = event.clientX || (event.touches ? event.touches[0].clientX : 0);
+                const currentY = event.clientY || (event.touches ? event.touches[0].clientY : 0);
+                const deltaX = currentX - threeJSState.panStart2D.x; 
+                const deltaY = currentY - threeJSState.panStart2D.y;
+                threeJSState.planOrigin.x = threeJSState.planOriginStart.x + deltaX; 
+                threeJSState.planOrigin.y = threeJSState.planOriginStart.y + deltaY;
+                render2DPlan();
+            } else if (threeJSState.isAddingWallMode && threeJSState.newWallStartPoint) {
+                 threeJSState.currentMouseWorldPos2D = { x: pos.x, z: pos.z };
+                 render2DPlan();
+            } else if (threeJSState.currentMouseWorldPos2D) {
+                 threeJSState.currentMouseWorldPos2D = null; // Clear if not in mode or no start point
+                 render2DPlan(); // To remove the temp line if it was drawn
+            }
+        }
+
+        function on2DPlanPointerUp(event) {
+            if (threeJSState.activeViewMode !== 'plan') return;
+            
+            if (event.button === 0 || (event.changedTouches && event.changedTouches.length > 0)) { // Left mouse or touch up
+                if (threeJSState.isDraggingVertex) { threeJSState.isDraggingVertex = false; }
+                if (threeJSState.isDraggingWall) { threeJSState.isDraggingWall = false; }
+                if (threeJSState.isDragging2D) { threeJSState.isDragging2D = false; }
+
+                if (threeJSState.isAddingWallMode && threeJSState.newWallStartPoint) {
+                    const endPos = get2DPlanPointerPosition(event.changedTouches ? event.changedTouches[0] : event);
+                    let finalEndX = endPos.x; let finalEndZ = endPos.z; let snapped = false;
+
+                    for (const wall of threeJSState.walls) {
+                        if (Math.hypot(finalEndX - wall.start.x, finalEndZ - wall.start.z) < snapDistance) {
+                            finalEndX = wall.start.x; finalEndZ = wall.start.z; snapped = true; break;
+                        }
+                        if (Math.hypot(finalEndX - wall.end.x, finalEndZ - wall.end.z) < snapDistance) {
+                            finalEndX = wall.end.x; finalEndZ = wall.end.z; snapped = true; break;
+                        }
+                    }
+                    if (!snapped) {
+                        if (Math.abs(finalEndX - threeJSState.newWallStartPoint.x) < snapDistance) finalEndX = threeJSState.newWallStartPoint.x;
+                        if (Math.abs(finalEndZ - threeJSState.newWallStartPoint.z) < snapDistance) finalEndZ = threeJSState.newWallStartPoint.z;
+                    }
+
+                    if (Math.hypot(finalEndX - threeJSState.newWallStartPoint.x, finalEndZ - threeJSState.newWallStartPoint.z) > 0.1) {
+                        addWall(threeJSState.newWallStartPoint.x, threeJSState.newWallStartPoint.z, finalEndX, finalEndZ);
+                        createOrUpdate3DWalls();
+                    }
+                    threeJSState.newWallStartPoint = null; 
+                    threeJSState.currentMouseWorldPos2D = null;
+                    // Keep isAddingWallMode = true to allow adding multiple walls
+                    render2DPlan();
+                }
+            } else if (event.button === 2) { // Right mouse button up
+                threeJSState.isPanning2D = false;
+            }
+        }
+
+
+        // --- View Toggling ---
+        function updateViewButtonsUI() { viewModeButtons.forEach(btn => { btn.classList.remove('btn-primary'); btn.classList.add('btn-secondary'); }); if (threeJSState.activeViewMode === '3d') viewMode3DButton.classList.replace('btn-secondary', 'btn-primary'); else if (threeJSState.activeViewMode === 'pseudo3d') viewModePseudo3DButton.classList.replace('btn-secondary', 'btn-primary'); else if (threeJSState.activeViewMode === 'plan') viewModePlanButton.classList.replace('btn-secondary', 'btn-primary'); }
+        function switchTo3DView(updateState = true) { if(updateState) threeJSState.activeViewMode = '3d'; ensureEditorInitialized(); createOrUpdate3DWalls(); editorTitle.textContent = "3D Редактор Комнаты"; planCanvasContainer.classList.add('hidden'); threeJSContainer.classList.remove('hidden'); if(threeJSState.controls && threeJSState.camera) { Object.assign(threeJSState.controls, threeJSState.defaultOrbitControls); threeJSState.camera.position.copy(threeJSState.defaultCameraPos); threeJSState.camera.lookAt(threeJSState.defaultCameraLookAt); threeJSState.controls.target.copy(threeJSState.defaultControlsTarget); threeJSState.controls.enabled = true; threeJSState.controls.update(); } if (threeJSState.renderer && (!threeJSState.animationFrameId || !updateState)) { animateThreeJS(); } updateViewButtonsUI(); onWindowResize(); }
+        function switchToPseudo3DView(updateState = true) { if(updateState) threeJSState.activeViewMode = 'pseudo3d'; ensureEditorInitialized(); createOrUpdate3DWalls(); editorTitle.textContent = "2D Вид Сверху"; planCanvasContainer.classList.add('hidden'); threeJSContainer.classList.remove('hidden'); if(threeJSState.controls && threeJSState.camera) { Object.assign(threeJSState.controls, threeJSState.defaultOrbitControls); Object.assign(threeJSState.controls, threeJSState.pseudo3DControls); threeJSState.camera.position.copy(threeJSState.pseudo3DCameraPos); threeJSState.camera.lookAt(threeJSState.defaultCameraLookAt); threeJSState.controls.target.copy(threeJSState.defaultCameraLookAt); threeJSState.controls.enabled = true; threeJSState.controls.update(); } if (threeJSState.renderer && (!threeJSState.animationFrameId || !updateState)) { animateThreeJS(); } updateViewButtonsUI(); onWindowResize(); }
+        function switchToPlanView(updateState = true) { if(updateState) threeJSState.activeViewMode = 'plan'; ensureEditorInitialized(); editorTitle.textContent = "2D План-Чертёж"; threeJSContainer.classList.add('hidden'); planCanvasContainer.classList.remove('hidden'); if (threeJSState.animationFrameId) { cancelAnimationFrame(threeJSState.animationFrameId); threeJSState.animationFrameId = null; } if(threeJSState.controls) threeJSState.controls.enabled = false; resize2DPlanCanvas(); render2DPlan(); updateViewButtonsUI(); }
+        viewMode3DButton.addEventListener('click', () => switchTo3DView()); viewModePseudo3DButton.addEventListener('click', () => switchToPseudo3DView()); viewModePlanButton.addEventListener('click', () => switchToPlanView());
+
+        // --- Object/Wall/Vertex Selection & Manipulation ---
+        function selectObject(object) { if (threeJSState.selectedObject === object) return; deselectObject(); threeJSState.selectedObject = object; if(object && object.traverse){ object.traverse(child => { if (child.isMesh && child.material?.emissive) { threeJSState.originalSelectionColor[child.uuid] = child.material.emissive.getHex(); child.material.emissive.setHex(0x888800); } }); } selectedObjectControls.classList.remove('hidden'); wallPropertiesPanel.classList.add('hidden'); if(threeJSState.activeViewMode === 'plan') render2DPlan(); }
+        
+        function showWallPropertiesPanel(wall) {
+            selectedObjectControls.classList.add('hidden');
+            wallPropertiesPanel.classList.remove('hidden');
+            wallThicknessInput.value = wall.thickness;
+            wallHeightInput.value = wall.height;
+        }
+        
+        function selectWall(wallId) { 
+            if (threeJSState.selectedWallId === wallId && !wallPropertiesPanel.classList.contains('hidden')) return; 
+            deselectObject(); 
+            threeJSState.selectedWallId = wallId; 
+            const wall = threeJSState.walls.find(w => w.id === wallId); 
+            if (wall) { showWallPropertiesPanel(wall); } 
+            if(threeJSState.activeViewMode === 'plan') render2DPlan(); 
+        }
+        function selectVertex(vertexInfo) { 
+            if (threeJSState.selectedVertexInfo?.wallId === vertexInfo.wallId && threeJSState.selectedVertexInfo?.type === vertexInfo.type) return; 
+            deselectObject(); 
+            threeJSState.selectedVertexInfo = vertexInfo; 
+            threeJSState.selectedWallId = vertexInfo.wallId; 
+            const wall = threeJSState.walls.find(w => w.id === vertexInfo.wallId);
+            if (wall) { showWallPropertiesPanel(wall); }
+            if(threeJSState.activeViewMode === 'plan') render2DPlan(); 
+        }
+        function deselectObject() { 
+            const prevSelectedFurniture = threeJSState.selectedObject; 
+            const prevSelectedWall = threeJSState.selectedWallId; 
+            const prevSelectedVertex = threeJSState.selectedVertexInfo; 
+            if (threeJSState.selectedObject) { if(threeJSState.selectedObject.traverse){ threeJSState.selectedObject.traverse(child => { if (child.isMesh && threeJSState.originalSelectionColor[child.uuid] !== undefined && child.material?.emissive) { child.material.emissive.setHex(threeJSState.originalSelectionColor[child.uuid]); delete threeJSState.originalSelectionColor[child.uuid]; } }); } } 
+            threeJSState.selectedObject = null; 
+            selectedObjectControls.classList.add('hidden'); 
+            wallPropertiesPanel.classList.add('hidden');
+            threeJSState.selectedWallId = null; 
+            threeJSState.selectedVertexInfo = null; 
+            threeJSState.isDragging3D = false; 
+            threeJSState.isDragging2D = false; 
+            threeJSState.isDraggingVertex = false; 
+            threeJSState.isDraggingWall = false;
+
+            if (threeJSState.isAddingWallMode) { // Turn off add wall mode if something was selected/deselected
+                threeJSState.isAddingWallMode = false;
+                addWallButton.classList.replace('btn-primary', 'btn-secondary');
+                if (threeJSState.planCanvas) threeJSState.planCanvas.style.cursor = 'default';
+            }
+            threeJSState.newWallStartPoint = null;
+            if (threeJSState.currentMouseWorldPos2D) {
+                threeJSState.currentMouseWorldPos2D = null;
+            }
+
+            if(threeJSState.activeViewMode === 'plan' && (prevSelectedFurniture || prevSelectedWall || prevSelectedVertex)) { render2DPlan(); } 
+        }
+        rotateLeftButton.addEventListener('click', () => { if (threeJSState.selectedObject) { threeJSState.selectedObject.rotation.y += Math.PI / 4; if(threeJSState.activeViewMode === 'plan') render2DPlan(); } });
+        rotateRightButton.addEventListener('click', () => { if (threeJSState.selectedObject) { threeJSState.selectedObject.rotation.y -= Math.PI / 4; if(threeJSState.activeViewMode === 'plan') render2DPlan(); } });
+        deleteButton.addEventListener('click', () => { if (threeJSState.selectedObject) { const objectToRemove = threeJSState.selectedObject; const itemIdToRemove = objectToRemove.userData.itemData?.id; deselectObject(); const indexToRemove = threeJSState.furniture.indexOf(objectToRemove); if (indexToRemove > -1) { threeJSState.furniture.splice(indexToRemove, 1); } threeJSState.scene.remove(objectToRemove); objectToRemove.traverse(child => { if (child.isMesh) { child.geometry?.dispose(); if (Array.isArray(child.material)) { child.material.forEach(m => m?.dispose()); } else { child.material?.dispose(); } } }); if(threeJSState.activeViewMode === 'plan') render2DPlan(); } });
+        
+        wallThicknessInput.addEventListener('input', () => {
+            if (threeJSState.selectedWallId) {
+                const wall = threeJSState.walls.find(w => w.id === threeJSState.selectedWallId);
+                if (wall) {
+                    wall.thickness = parseFloat(wallThicknessInput.value) || 0.1;
+                    render2DPlan();
+                    createOrUpdate3DWalls();
+                }
+            }
+        });
+        wallHeightInput.addEventListener('input', () => {
+            if (threeJSState.selectedWallId) {
+                const wall = threeJSState.walls.find(w => w.id === threeJSState.selectedWallId);
+                if (wall) {
+                    wall.height = parseFloat(wallHeightInput.value) || 2.5;
+                    createOrUpdate3DWalls(); 
+                }
+            }
+        });
+        deleteWallButton.addEventListener('click', () => {
+            if (threeJSState.selectedWallId) {
+                const wallIdToDelete = threeJSState.selectedWallId;
+                const wallIndex = threeJSState.walls.findIndex(w => w.id === wallIdToDelete);
+                if (wallIndex > -1) {
+                    const wallToRemove = threeJSState.walls[wallIndex];
+                    if (wallToRemove.threeMesh) {
+                        threeJSState.scene.remove(wallToRemove.threeMesh);
+                        if (wallToRemove.threeMesh.geometry) wallToRemove.threeMesh.geometry.dispose();
+                        if (wallToRemove.threeMesh.material) {
+                            if(Array.isArray(wallToRemove.threeMesh.material)) wallToRemove.threeMesh.material.forEach(m=>m?.dispose());
+                            else wallToRemove.threeMesh.material?.dispose();
+                        }
+                    }
+                    threeJSState.walls.splice(wallIndex, 1);
+                    deselectObject(); 
+                    render2DPlan();
+                    createOrUpdate3DWalls();
+                }
+            }
+        });
+
+        addWallButton.addEventListener('click', () => {
+            threeJSState.isAddingWallMode = !threeJSState.isAddingWallMode;
+            threeJSState.newWallStartPoint = null; 
+            threeJSState.currentMouseWorldPos2D = null;
+            deselectObject(); 
+            if (threeJSState.isAddingWallMode) {
+                addWallButton.classList.replace('btn-secondary', 'btn-primary');
+                if (threeJSState.planCanvas) threeJSState.planCanvas.style.cursor = 'crosshair';
+            } else {
+                addWallButton.classList.replace('btn-primary', 'btn-secondary');
+                 if (threeJSState.planCanvas) threeJSState.planCanvas.style.cursor = 'default';
+            }
+            render2DPlan(); 
+        });
+
+
+        // --- Furniture Creation Functions & Adding ---
+        function createTable() { const group = new THREE.Group(); const topGeo = new THREE.BoxGeometry(2, 0.2, 1); const legGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 8); const mat = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); const top = new THREE.Mesh(topGeo, mat); top.position.y = 1; top.castShadow = true; group.add(top); [{x: -0.8, z: -0.35}, {x: 0.8, z: -0.35}, {x: -0.8, z: 0.35}, {x: 0.8, z: 0.35}].forEach(p => { const leg = new THREE.Mesh(legGeo, mat); leg.position.set(p.x, 0.5, p.z); leg.castShadow = true; group.add(leg); }); group.userData.planDimensions = { width: 2, depth: 1, shape: 'rect' }; group.userData.itemData = { id: 'table-' + Date.now() + Math.random().toString(36).substr(2, 5), name: 'Стол обеденный Sky', sku: '105306822', price: 12000, image: 'https://images.pexels.com/photos/2098913/pexels-photo-2098913.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop', type: 'table' }; return group; }
+        function createSofa() { const group = new THREE.Group(); const mat = new THREE.MeshStandardMaterial({ color: 0x607D8B }); const base = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 1.2), mat); base.position.y = 0.4; base.castShadow = true; group.add(base); const back = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 0.3), mat); back.position.set(0, 1.3, -0.45); back.castShadow = true; group.add(back); const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 1.2), mat); lArm.position.set(-1.35, 0.7, 0); lArm.castShadow = true; group.add(lArm); const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 1.2), mat); rArm.position.set(1.35, 0.7, 0); rArm.castShadow = true; group.add(rArm); group.userData.planDimensions = { width: 3, depth: 1.2, shape: 'rect' }; group.userData.itemData = { id: 'sofa-' + Date.now() + Math.random().toString(36).substr(2, 5), name: 'Угловой диван-кровать', sku: '40530683', price: 52000, image: 'https://images.pexels.com/photos/4846106/pexels-photo-4846106.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop', type: 'sofa' }; return group; }
+        function createLamp() { const group = new THREE.Group(); const standMat = new THREE.MeshStandardMaterial({ color: 0xB0BEC5 }); const shadeMat = new THREE.MeshStandardMaterial({ color: 0xFFFDD0, side: THREE.DoubleSide }); const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.15, 1.5, 12), standMat); stand.position.y = 0.75; stand.castShadow = true; group.add(stand); const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 0.4, 12, 1, false), shadeMat); shade.position.y = 1.6; shade.castShadow = true; group.add(shade); group.userData.planDimensions = { radius: 0.5, shape: 'circle' }; group.userData.itemData = { id: 'lamp-' + Date.now() + Math.random().toString(36).substr(2, 5), name: 'Напольная лампа Modern', sku: '200100500', price: 3500, image: 'https://images.pexels.com/photos/7005386/pexels-photo-7005386.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop', type: 'lamp' }; return group; }
+        document.getElementById('addTableButton').addEventListener('click', () => addFurniture(createTable));
+        document.getElementById('addSofaButton').addEventListener('click', () => addFurniture(createSofa));
+        document.getElementById('addLampButton').addEventListener('click', () => addFurniture(createLamp));
+        function addFurniture(creationFunction) { ensureEditorInitialized(); if (!threeJSState.scene) { console.error("addFurniture: ОШИБКА - Сцена (threeJSState.scene) не найдена!"); return; } const furnitureItem = creationFunction(); const halfFloorSize = 10 - 1; furnitureItem.position.set( Math.random() * halfFloorSize * 2 - halfFloorSize, 0, Math.random() * halfFloorSize * 2 - halfFloorSize ); threeJSState.scene.add(furnitureItem); threeJSState.furniture.push(furnitureItem); selectObject(furnitureItem); if (threeJSState.activeViewMode === 'plan') { render2DPlan(); } else if (!threeJSState.animationFrameId && threeJSState.renderer) { animateThreeJS(); } }
+        function clearThreeJSScene() { if (!threeJSState.scene) return; while (threeJSState.furniture.length > 0) { const item = threeJSState.furniture.pop(); threeJSState.scene.remove(item); item.traverse(child => { if (child.isMesh) { child.geometry?.dispose(); if (Array.isArray(child.material)) child.material.forEach(m => m?.dispose()); else child.material?.dispose(); } }); } threeJSState.walls.forEach(wall => { if (wall.threeMesh) { threeJSState.scene.remove(wall.threeMesh); if (wall.threeMesh.geometry) wall.threeMesh.geometry.dispose(); if (wall.threeMesh.material) { if(Array.isArray(wall.threeMesh.material)) wall.threeMesh.material.forEach(m=>m?.dispose()); else wall.threeMesh.material?.dispose(); } wall.threeMesh = null; } }); if (threeJSState.activeViewMode === 'plan') render2DPlan(); }
+
+        // --- Функции для экрана сметы ---
+        function renderEstimateScreen() { estimateItemsContainer.innerHTML = ''; let totalQuantity = 0; let subtotalPrice = 0; let allSelected = threeJSState.furniture.length > 0; threeJSState.furniture.forEach(furnitureObject => { const item = furnitureObject.userData.itemData; if (!item) return; const isChecked = furnitureObject.userData.estimateSelected === undefined ? true : furnitureObject.userData.estimateSelected; const itemElement = document.createElement('div'); itemElement.classList.add('estimate-item'); itemElement.innerHTML = `<input type="checkbox" class="estimate-item-checkbox" data-item-id="${item.id}" ${isChecked ? 'checked' : ''}><img src="${item.image}" alt="${item.name}" class="estimate-item-image"><div class="estimate-item-details"><span class="estimate-item-name">${item.name}</span><span class="estimate-item-sku">Артикул: ${item.sku}</span><span class="estimate-item-price">${item.price.toLocaleString('ru-RU')} ₽</span></div><div class="estimate-item-actions"><button data-remove-item-id="${item.id}" title="Удалить"><svg class="h-5 w-5" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"></path></svg></button></div>`; estimateItemsContainer.appendChild(itemElement); if (isChecked) { totalQuantity++; subtotalPrice += item.price; } if (!isChecked) { allSelected = false; } }); estimateItemCountHeader.textContent = `${threeJSState.furniture.length} ${getNoun(threeJSState.furniture.length, 'товар', 'товара', 'товаров')}`; summaryQuantity.textContent = `${totalQuantity} ${getNoun(totalQuantity, 'шт.', 'шт.', 'шт.')}`; summarySubtotal.textContent = `${subtotalPrice.toLocaleString('ru-RU')} ₽`; summaryTotal.textContent = `${subtotalPrice.toLocaleString('ru-RU')} ₽`; selectAllEstimateItemsCheckbox.checked = allSelected && threeJSState.furniture.length > 0; addEstimateItemListeners(); }
+        function addEstimateItemListeners() { document.querySelectorAll('.estimate-item-checkbox').forEach(checkbox => { const newCheckbox = checkbox.cloneNode(true); checkbox.parentNode.replaceChild(newCheckbox, checkbox); newCheckbox.addEventListener('change', (event) => { const itemId = event.target.dataset.itemId; const furnitureObject = threeJSState.furniture.find(f => f.userData.itemData && f.userData.itemData.id === itemId); if (furnitureObject) { furnitureObject.userData.estimateSelected = event.target.checked; } renderEstimateScreen(); }); }); document.querySelectorAll('button[data-remove-item-id]').forEach(button => { const newButton = button.cloneNode(true); button.parentNode.replaceChild(newButton, button); newButton.addEventListener('click', (event) => { const itemIdToRemove = event.currentTarget.dataset.removeItemId; const indexToRemove = threeJSState.furniture.findIndex(f => f.userData.itemData && f.userData.itemData.id === itemIdToRemove); if (indexToRemove > -1) { const removedThreeJSObject = threeJSState.furniture.splice(indexToRemove, 1)[0]; if (threeJSState.scene && removedThreeJSObject) { threeJSState.scene.remove(removedThreeJSObject); removedThreeJSObject.traverse(child => { if (child.isMesh) { child.geometry?.dispose(); if (Array.isArray(child.material)) { child.material.forEach(m => m?.dispose()); } else { child.material?.dispose(); } } }); if (threeJSState.selectedObject === removedThreeJSObject) { deselectObject(); } } } renderEstimateScreen(); if(threeJSState.activeViewMode === 'plan') render2DPlan(); }); }); }
+        selectAllEstimateItemsCheckbox.addEventListener('change', (event) => { const isChecked = event.target.checked; threeJSState.furniture.forEach(furnitureObject => { if (furnitureObject.userData.itemData) { furnitureObject.userData.estimateSelected = isChecked; } }); renderEstimateScreen(); });
+        removeAllEstimateItemsButton.addEventListener('click', () => { if (confirm('Вы уверены, что хотите удалить все предметы из сметы и сцены?')) { if (threeJSState.scene) { threeJSState.furniture.forEach(obj => { threeJSState.scene.remove(obj); obj.traverse(child => { if (child.isMesh) { child.geometry?.dispose(); if(Array.isArray(child.material)) child.material.forEach(m=>m?.dispose()); else if(child.material) child.material?.dispose(); } }); }); } threeJSState.furniture = []; deselectObject(); renderEstimateScreen(); if(threeJSState.activeViewMode === 'plan') render2DPlan(); } });
+        openEstimateButton.addEventListener('click', () => { navigateTo(5); });
+        closeEstimateButton.addEventListener('click', () => { navigateTo(4); });
+        function getNoun(number, one, two, five) { let n = Math.abs(number); n %= 100; if (n >= 5 && n <= 20) { return five; } n %= 10; if (n === 1) { return one; } if (n >= 2 && n <= 4) { return two; } return five; }
+
+        // --- Initialize App ---
+        document.addEventListener('DOMContentLoaded', () => {
+             initializeDefaultWalls();
+             navigateTo(1);
+        });
+
+    </script>
+</body>
+</html>

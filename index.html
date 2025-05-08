@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Совушка ROOM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        .app-container-base {
+            margin: 0 auto;
+            background-color: #24243e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header { padding: 1rem; text-align: center; background-color: #1f1f38; }
+        .header h1 { font-size: 1.5rem; font-weight: 700; color: #ffffff; }
+        .content { padding: 1.5rem; flex-grow: 1; }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-block {
+            display: flex;
+            width: 100%;
+        }
+        .btn-primary { background-color: #4a90e2; color: #ffffff; }
+        .btn-primary:hover { background-color: #357abd; }
+        .btn-secondary { background-color: #3a3a5a; color: #e0e0e0; }
+        .btn-secondary:hover { background-color: #4a4a6a; }
+        .btn-danger { background-color: #e53e3e; color: #ffffff; }
+        .btn-danger:hover { background-color: #c53030; }
+
+        .checkbox-label { display: flex; align-items: center; padding: 0.75rem; background-color: #2a2a4a; border-radius: 0.5rem; margin-bottom: 0.75rem; cursor: pointer; }
+        .checkbox-label input[type="checkbox"] { accent-color: #4a90e2; margin-right: 0.75rem; width: 1.25rem; height: 1.25rem; }
+        .style-option { background-color: #2a2a4a; border-radius: 0.5rem; padding: 0.5rem; text-align: center; cursor: pointer; transition: background-color 0.3s ease, transform 0.2s ease, border-color 0.3s ease; border: 2px solid transparent; }
+        .style-option.selected { border-color: #4a90e2; background-color: #3a3a5a; transform: scale(1.05); }
+        .style-option img { width: 100%; height: 80px; object-fit: cover; border-radius: 0.25rem; margin-bottom: 0.5rem; background-color: #333; }
+        @media (min-width: 640px) {
+            .style-option img { height: 100px; }
+        }
+        @media (min-width: 768px) {
+            .style-option img { height: 120px; }
+        }
+
+        .hidden { display: none !important; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4a90e2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 2rem auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .result-image-container {
+            position: relative; border: 2px dashed #4a4a6a; border-radius: 0.5rem;
+            padding: 1rem; margin-bottom: 1rem;
+            min-height: 200px;
+            display: flex; align-items: center; justify-content: center; background-color: #2a2a4a;
+        }
+        .result-image-container img {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 0.25rem; object-fit: contain;
+        }
+        @media (min-width: 768px) {
+            .result-image-container { min-height: 300px; }
+            .result-image-container img { max-height: 350px; }
+            #imagePreviewContainer img { max-height: 300px !important; }
+        }
+
+        .image-placeholder-text { color: #777790; text-align: center; }
+
+        #screen4, #screen5 {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 70px);
+            position: relative;
+        }
+        @media (min-width: 768px) {
+            #screen4, #screen5 { height: calc(100vh - 86px);  }
+        }
+
+        #threejs-canvas-container, #plan-canvas-container {
+            flex-grow: 1;
+            position: relative;
+            background-color: #101020;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            touch-action: none;
+        }
+        #threejs-canvas, #plan-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #plan-canvas-container {
+            background-color: #f0f0f0;
+        }
+
+        .editor-controls-toolbar {
+            padding: 0.5rem 0;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        .editor-controls-toolbar .btn {
+            padding: 0.5rem;
+            min-width: 40px;
+            height: 40px;
+        }
+        .editor-controls-toolbar .btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+        .view-mode-btn-group .btn {
+            padding: 0.35rem 0.6rem;
+        }
+
+        .selected-object-controls {
+            position: absolute;
+            top: 50%;
+            right: 0.5rem;
+            transform: translateY(-50%);
+            padding: 0.5rem;
+            background-color: rgba(36, 36, 62, 0.9);
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 10;
+        }
+        .selected-object-controls.hidden {
+            display: none !important;
+        }
+        .selected-object-controls .btn {
+            padding: 0.5rem;
+            min-width: 40px;
+            height: 40px;
+            width: 40px;
+        }
+        .selected-object-controls .btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        #wallPropertiesPanel { /* Specific styles for wall properties */
+            align-items: stretch; /* Make inputs full width */
+        }
+        #wallPropertiesPanel input {
+            background-color: #3a3a5a; /* Darker input background */
+            border: 1px solid #4a4a6a;
+            color: #e0e0e0; /* Text color for inputs */
+            padding: 0.25rem 0.5rem; /* Padding for inputs */
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+
+
+        .instructions {
+            font-size: 0.75rem;
+            text-align: center;
+            color: #9090a0;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Стили для экрана сметы (screen5) */
+        #screen5 .content-wrapper {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-bottom: 1rem;
+        }
+        .estimate-item {
+            background-color: #2a2a4a;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .estimate-item-checkbox {
+            accent-color: #4a90e2;
+            width: 1.25rem;
+            height: 1.25rem;
+            flex-shrink: 0;
+        }
+        .estimate-item-image {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+            background-color: #333;
+            border-radius: 0.25rem;
+            flex-shrink: 0;
+        }
+        .estimate-item-details {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+        }
+        .estimate-item-name {
+            font-weight: 600;
+            color: #ffffff;
+            font-size: 0.875rem;
+        }
+        .estimate-item-sku, .estimate-item-price {
+            font-size: 0.75rem;
+            color: #a0aec0;
+        }
+        .estimate-item-price {
+            font-weight: 500;
+            color: #e0e0e0;
+        }
+        .estimate-item-actions button {
+            background: none;
+            border: none;
+            color: #a0aec0;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+        .estimate-item-actions button:hover {
+            color: #ffffff;
+        }
+        .estimate-summary {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #3a3a5a;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .summary-row.total {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #ffffff;
+            margin-top: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container-base w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl">
+    <header class="header md:py-6">
+        <h1 class="md:text-2xl">Совушка ROOM</h1>
+    </header>
+    <main class="content md:p-8">
+        <div id="screen1">
+            <h2 class="text-2xl md:text-3xl font-semibold mb-2 text-center text-white">Обновление интерьера</h2>
+            <p class="text-sm md:text-base text-center mb-6 text-gray-400">детской за 30 секунд</p>
+            <div class="bg-gray-700 p-4 md:p-6 rounded-lg mb-6 md:max-w-lg md:mx-auto">
+                <p class="text-sm md:text-base mb-3 text-gray-300">Загрузите фото комнаты...</p>
+                <p class="text-sm md:text-base font-semibold mb-1 text-gray-200">Если вы хотите:</p>
+                <label class="checkbox-label text-sm md:text-base"><input type="checkbox" id="goal_repair">Сделать ремонт</label>
+                <label class="checkbox-label text-sm md:text-base"><input type="checkbox" id="goal_setup_room">Обустроить первую детскую</label>
+                <label class="checkbox-label text-sm md:text-base"><input type="checkbox" id="goal_find_furniture">Подобрать мебель</label>
+            </div>
+            <button id="nextToScreen2" class="btn btn-primary btn-block text-base md:text-lg md:py-3">Далее</button>
+        </div>
+
+        <div id="screen2" class="hidden">
+            <h3 class="text-xl md:text-2xl font-semibold mb-3 text-white">Ваша комната</h3>
+            <div id="imagePreviewContainer" class="result-image-container mb-3">
+                <span class="image-placeholder-text md:text-lg">Предпросмотр фото</span>
+            </div>
+            <input type="file" id="photoUpload" class="hidden" accept="image/*">
+            <button id="uploadButton" class="btn btn-secondary btn-block mb-4 text-base md:text-lg md:py-3">Загрузить фото</button>
+
+            <h3 class="text-xl md:text-2xl font-semibold mb-4 text-white">Выберите стиль</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+                <div class="style-option" data-style="minimalism">
+                    <img src="https://images.pexels.com/photos/276724/pexels-photo-276724.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Минимализм">
+                    <p class="text-sm md:text-base">Минимализм</p>
+                </div>
+                <div class="style-option" data-style="loft">
+                    <img src="https://images.pexels.com/photos/6434635/pexels-photo-6434635.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Лофт">
+                    <p class="text-sm md:text-base">Лофт</p>
+                </div>
+                <div class="style-option" data-style="classic">
+                    <img src="https://images.pexels.com/photos/271816/pexels-photo-271816.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Классика">
+                    <p class="text-sm md:text-base">Классика</p>
+                </div>
+                <div class="style-option" data-style="neoclassic">
+                    <img src="https://images.pexels.com/photos/6782470/pexels-photo-6782470.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Неоклассика">
+                    <p class="text-sm md:text-base">Неоклассика</p>
+                </div>
+                <div class="style-option" data-style="scandinavian">
+                    <img src="https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Скандинавский">
+                    <p class="text-sm md:text-base">Сканди</p>
+                </div>
+                <div class="style-option" data-style="other">
+                    <img src="https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=300" alt="Другое">
+                    <p class="text-sm md:text-base">Другое</p>
+                </div>
+            </div>
+            <button id="showResultButton" class="btn btn-primary btn-block text-base md:text-lg md:py-3">Показать результат</button>
+            <button id="backToScreen1From2" class="btn btn-secondary btn-block mt-3 text-base md:text-lg md:py-3">Назад</button>
+        </div>
+
+        <div id="screen3" class="hidden">
+            <h2 class="text-2xl md:text-3xl font-semibold mb-4 text-center text-white">Результат <span class="text-yellow-400 text-xl md:text-2xl">✨</span></h2>
+            <div id="loadingIndicator" class="loader hidden"></div>
+            <div id="resultContent">
+                <p class="text-center text-gray-400 mb-4 text-base md:text-lg">Ваш обновленный интерьер в стиле <strong id="selectedStyleText" class="text-white"></strong>:</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div><h4 class="text-lg md:text-xl font-medium mb-2 text-gray-300">До:</h4><div id="originalImageResult" class="result-image-container"><span class="image-placeholder-text md:text-lg">Фото не загружено</span></div></div>
+                    <div><h4 class="text-lg md:text-xl font-medium mb-2 text-gray-300">После:</h4><div class="result-image-container"><img id="generatedImage" src="https://placehold.co/300x200/777790/FFFFFF?text=Выберите+стиль" alt="Сгенерированный дизайн"></div></div>
+                </div>
+            </div>
+            <button id="openEditorButton" class="btn btn-secondary btn-block mt-4 md:mt-6 text-base md:text-lg md:py-3">Редактор</button>
+            <button id="startOverButton" class="btn btn-primary btn-block mt-3 text-base md:text-lg md:py-3">Начать заново</button>
+        </div>
+
+        <div id="screen4" class="hidden">
+            <h2 id="editorTitle" class="text-xl md:text-2xl font-semibold text-white text-center">3D Редактор Комнаты</h2>
+            <div class="editor-controls-toolbar md:gap-2">
+                <div class="view-mode-btn-group flex gap-1 md:gap-2">
+                    <button id="viewMode3D" class="btn btn-secondary md:min-w-[48px] md:h-[48px]" title="3D Вид">3D</button>
+                    <button id="viewModePseudo3D" class="btn btn-secondary md:min-w-[48px] md:h-[48px]" title="2D Вид сверху (псевдо-3D)">2D</button>
+                    <button id="viewModePlan" class="btn btn-secondary md:min-w-[48px] md:h-[48px]" title="2D Чертёж">План</button>
+                </div>
+                <div class="w-px h-8 bg-gray-600 mx-1 hidden sm:block"></div>
+                <button id="addTableButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Добавить стол">
+                    <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M4 7H20V9H4V7M4 10H20V12H4V10M4 13H20V15H4V13M5 17H7V20H5V17M9 17H11V20H9V17M13 17H15V20H13V17M17 17H19V20H17V17Z"></path></svg>
+                </button>
+                <button id="addSofaButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Добавить диван">
+                    <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M20,9H4C2.9,9 2,9.9 2,11V15C2,16.11 2.9,17 4,17H5V20H7V17H17V20H19V17H20C21.1,17 22,16.11 22,15V11C22,9.9 21.1,9 20,9M20,15H4V11H20V15M5,12V14H7V12H5M17,12V14H19V12H17Z"></path></svg>
+                </button>
+                <button id="addLampButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Добавить лампу">
+                    <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M12,2C10.34,2 9,3.34 9,5V10H6L12,18L18,10H15V5C15,3.34 13.66,2 12,2M12,20A2,2 0 0,0 14,22H10A2,2 0 0,0 12,20Z"></path></svg>
+                </button>
+                <button id="addWallButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Добавить стену">
+                    <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path fill="currentColor" d="M22,11V3H13V5H11V3H2V11H4V21H6V11H8V21H10V11H12V21H14V11H16V21H18V11H20V21H22V11Z M11,11H4V5H11V11Z M20,9H13V7H20V9Z"></path></svg>
+                </button>
+                <div class="w-px h-8 bg-gray-600 mx-1 hidden sm:block"></div>
+                <button id="openEstimateButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Смета">
+                    <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path fill="currentColor" d="M9,7V10H11V7H9M13,7V10H15V7H13M9,12V15H11V12H9M13,12V15H15V12H13M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M5,5V19H19V5H5Z"></path></svg>
+                </button>
+            </div>
+            <div id="selectedObjectControls" class="selected-object-controls hidden md:gap-2">
+                <button id="rotateLeftButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Повернуть влево">
+                    <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M14.22,2.22L12.78,3.67L15.1,6H10C6.69,6 4,8.69 4,12C4,15.31 6.69,18 10,18H15V20H10C5.58,20 2,16.42 2,12C2,7.58 5.58,4 10,4H15.1L12.78,1.33L14.22,2.22M20,12V14H18V12H20M20,8V10H18V8H20M20,16V18H18V16H20Z" transform="scale(-1,1) translate(-24,0)"></path></svg>
+                </button>
+                <button id="rotateRightButton" class="btn btn-secondary md:min-w-[48px] md:h-[48px] md:p-2.5" title="Повернуть вправо">
+                    <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path d="M14.22,2.22L12.78,3.67L15.1,6H10C6.69,6 4,8.69 4,12C4,15.31 6.69,18 10,18H15V20H10C5.58,20 2,16.42 2,12C2,7.58 5.58,4 10,4H15.1L12.78,1.33L14.22,2.22M20,12V14H18V12H20M20,8V10H18V8H20M20,16V18H18V16H20Z"></path></svg>
+                </button>
+                <button id="deleteButton" class="btn btn-danger md:min-w-[48px] md:h-[48px] md:p-2.5" title="Удалить">
+                    <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"></path></svg>
+                </button>
+            </div>
+            <div id="wallPropertiesPanel" class="selected-object-controls hidden md:gap-2" style="flex-direction: column;">
+                <h4 class="text-xs text-center text-gray-300 mb-1">Свойства стены</h4>
+                <label class="text-xs text-gray-400">Толщина (м):</label>
+                <input type="number" id="wallThicknessInput" step="0.01" class="bg-gray-700 text-white text-sm rounded p-1 w-full mb-1">
+                <label class="text-xs text-gray-400">Высота (м):</label>
+                <input type="number" id="wallHeightInput" step="0.1" class="bg-gray-700 text-white text-sm rounded p-1 w-full mb-2">
+                <button id="deleteWallButton" class="btn btn-danger btn-block md:min-w-[auto] md:h-[auto] md:p-1.5 text-xs" title="Удалить стену">
+                    Удалить стену
+                </button>
+            </div>
+
+            <div id="threejs-canvas-container">
+                <canvas id="threejs-canvas"></canvas>
+            </div>
+            <div id="plan-canvas-container" class="hidden">
+                <canvas id="plan-canvas"></canvas>
+            </div>
+
+            <p class="instructions md:text-sm">Клик/тап для выбора. Перетаскивание для перемещения. Колесико/жест для зума (в 2D Плане).</p>
+            <button id="backToResultsButton" class="btn btn-primary btn-block mt-3 text-base md:text-lg md:py-3">Назад к результатам</button>
+        </div>
+
+        <div id="screen5" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl md:text-2xl font-semibold text-white">Смета помещения</h2>
+                <button id="closeEstimateButton" class="text-gray-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="content-wrapper">
+                <div class="flex justify-between items-center mb-3 text-sm">
+                    <div id="estimateItemCountHeader">0 товаров</div>
+                    <button id="removeAllEstimateItems" class="text-red-400 hover:text-red-300 flex items-center gap-1">
+                        Удалить всё
+                        <svg class="h-4 w-4" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"></path></svg>
+                    </button>
+                </div>
+                <label class="checkbox-label mb-3 text-sm">
+                    <input type="checkbox" id="selectAllEstimateItems" class="estimate-item-checkbox">
+                    Выбрать всё
+                </label>
+
+                <div id="estimateItemsContainer" class="mb-6">
+                    {/* Сюда будут добавляться элементы сметы */}
+                </div>
+
+                <div class="estimate-summary">
+                    <h3 class="text-lg font-semibold mb-3 text-white">Ваш заказ:</h3>
+                    <div class="summary-row">
+                        <span>Количество товаров</span>
+                        <span id="summaryQuantity">0 шт.</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Товары на сумму</span>
+                        <span id="summarySubtotal">0 ₽</span>
+                    </div>
+                    <div class="summary-row total">
+                        <span>Итого:</span>
+                        <span id="summaryTotal">0 ₽</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-auto pt-4">
+                <button id="checkoutButton" class="btn btn-primary btn-block text-base md:text-lg md:py-3 bg-green-500 hover:bg-green-600">Оформить заказ</button>
+                <button id="checkoutCreditButton" class="btn btn-secondary btn-block mt-3 text-base md:text-lg md:py-3">Оформить заказ в кредит</button>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
