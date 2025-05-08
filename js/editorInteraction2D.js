@@ -33,13 +33,26 @@ function getOrCreateSvgImage(type, svgString) {
     };
     image.onerror = (err) => {
         console.error(`Error loading SVG image for type: ${type}`, err);
-        svgImageCache.delete(type); // Удаляем из кэша при ошибке
+        cacheEntry.error = true; // Помечаем как ошибку
+        cacheEntry.loaded = true; // Считаем загрузку "завершенной", чтобы не пытаться грузить снова
+        svgImageCache.set(type, cacheEntry); // Обновляем кэш с флагом ошибки
+        requestAnimationFrame(render2DPlan); // Перерисовываем, чтобы показать ошибку или плейсхолдер
     };
 
     // Устанавливаем Data URL
     // Используем btoa для кодирования в Base64, чтобы избежать проблем со спецсимволами SVG в URL
-    const base64Svg = btoa(unescape(encodeURIComponent(svgString))); // Правильное кодирование для base64
-    image.src = `data:image/svg+xml;base64,${base64Svg}`;
+    try {
+        // Используем btoa для кодирования в Base64, чтобы избежать проблем со спецсимволами SVG в URL
+        const base64Svg = btoa(unescape(encodeURIComponent(svgString))); // Правильное кодирование для base64
+        image.src = `data:image/svg+xml;base64,${base64Svg}`;
+        // console.log(`Setting SVG src for type: ${type}`, image.src.substring(0, 100) + "..."); // Логгируем начало src
+    } catch (e) {
+        console.error(`Error encoding SVG string for type ${type}:`, e);
+        cacheEntry.error = true;
+        cacheEntry.loaded = true;
+        svgImageCache.set(type, cacheEntry);
+    }
+
 
     return cacheEntry; // Возвращаем объект {image, loaded}
 }
@@ -333,7 +346,7 @@ export function on2DPlanPointerDown(event) {
     render2DPlan();
 }
 
-export function on2DPlanPointerMove(event) {
+export async function on2DPlanPointerMove(event) {
     if (editorState.activeViewMode !== 'plan') return;
     const posData = get2DPlanPointerWorldPosition(event);
     if (!posData.valid) return;
@@ -348,18 +361,75 @@ export function on2DPlanPointerMove(event) {
 
     // Перетаскивание ОСЕВОЙ вершины
     if (editorState.isDraggingVertex && editorState.selectedVertexInfo && (editorState.selectedVertexInfo.vertexIndex === 0 || editorState.selectedVertexInfo.vertexIndex === 3)) {
-        const { initialPosAtDragStart } = editorState.selectedVertexInfo;
-        let targetX = pos.x; let targetZ = pos.z; let snapped = false;
-        for (const wall of editorState.walls) { /* ... Snap logic по осевым точкам ... */ }
-        const newPos = { x: targetX, z: targetZ };
+        const {
+            initialPosAtDragStart,
+            wallId: draggingWallId,
+            vertexIndex: draggingVertexIndex
+        } = editorState.selectedVertexInfo;
+        let targetX = pos.x; // Текущая позиция курсора (мир)
+        let targetZ = pos.z;
+        let snapped = false;
+        let snapTarget = null; // {x, z} точка, к которой прилипаем
+
+        const draggingWall = editorState.walls.find(w => w.id === draggingWallId);
+        if (!draggingWall) return; // Стена не найдена?
+
+        // 1. Снаппинг к вершинам ДРУГИХ стен
+        for (const wall of editorState.walls) {
+            if (wall.id === draggingWallId) continue; // Пропускаем саму себя
+            if (!wall.vertices || wall.vertices.length !== 6) continue;
+            const v0 = wall.vertices[0];
+            const v3 = wall.vertices[3];
+
+            // К началу другой стены
+            if (Math.hypot(targetX - v0.x, targetZ - v0.z) < Config.SNAP_DISTANCE) {
+                snapTarget = {x: v0.x, z: v0.z};
+                snapped = true;
+                break;
+            }
+            // К концу другой стены
+            if (Math.hypot(targetX - v3.x, targetZ - v3.z) < Config.SNAP_DISTANCE) {
+                snapTarget = {x: v3.x, z: v3.z};
+                snapped = true;
+                break;
+            }
+        }
+        // 2. Снаппинг к оси X/Z другой вершины ТОЙ ЖЕ стены (если не прилипли к другой стене)
+        if (!snapped && draggingWall.vertices?.length === 6) {
+            const otherVertexIndex = (draggingVertexIndex === 0) ? 3 : 0; // Индекс другой *осевой* вершины
+            const otherVertex = draggingWall.vertices[otherVertexIndex];
+
+            // К оси X другой вершины
+            if (Math.abs(targetZ - otherVertex.z) < Config.SNAP_DISTANCE) {
+                targetZ = otherVertex.z; // Прилипаем по Z (горизонтальное выравнивание)
+                snapped = true; // Считаем это снаппингом
+                snapTarget = {x: targetX, z: targetZ}; // Цель - текущий X, но выровненный Z
+            }
+            // К оси Y другой вершины (только если по X не прилипли)
+            if (!snapped && Math.abs(targetX - otherVertex.x) < Config.SNAP_DISTANCE) {
+                targetX = otherVertex.x; // Прилипаем по X (вертикальное выравнивание)
+                snapped = true;
+                snapTarget = {x: targetX, z: targetZ}; // Цель - выровненный X, текущий Z
+            }
+        }
+
+        // Определяем финальную позицию newPos
+        const newPos = snapped ? {...snapTarget} : {x: targetX, z: targetZ};
+
+        // Обновляем, только если позиция действительно изменилась от initialPosAtDragStart
+        // Используем initialPosAtDragStart для сравнения, т.к. vertexRef мог уже измениться
         if (!pointsAreEqual(initialPosAtDragStart, newPos)) {
-            const updated = updateConnectedVertices(initialPosAtDragStart, newPos); // Обновит осевые и пересчитает внешние
+            // updateConnectedVertices обновит осевые точки И ПЕРЕСЧИТАЕТ внешние точки затронутых стен
+            const updated = await updateConnectedVertices(initialPosAtDragStart, newPos);
             if (updated) {
-                editorState.selectedVertexInfo.initialPosAtDragStart = { ...newPos };
-                needsRedraw = true; needs3DUpdate = true;
+                // Обновляем initialPosAtDragStart на новую позицию для следующего шага
+                editorState.selectedVertexInfo.initialPosAtDragStart = {...newPos};
+                needsRedraw = true;
+                needs3DUpdate = true;
             }
         }
     }
+
     // Перетаскивание стены
     else if (editorState.isDraggingWall && editorState.selectedWallId) {
         const draggedWall = editorState.walls.find(w => w.id === editorState.selectedWallId);
