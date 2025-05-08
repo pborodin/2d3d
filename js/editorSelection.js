@@ -26,18 +26,36 @@ export function selectObject(object) {
     if (editorState.activeViewMode === 'plan') render2DPlan();
 }
 
+// --- ИЗМЕНЕНИЕ: selectWall читает толщины и считает общую ---
 export function selectWall(wallId) {
-    const dom = getDomElements();
-    if (editorState.selectedWallId === wallId && !dom.wallPropertiesPanel.classList.contains('hidden')) return;
+    // if (editorState.selectedWallId === wallId && !UI.getDomElements().wallPropertiesPanel.classList.contains('hidden')) return; // Оптимизация, если панель уже видима
     deselectEverything();
 
     editorState.selectedWallId = wallId;
     const wall = editorState.walls.find(w => w.id === wallId);
     if (wall) {
-        UI.showWallPropertiesPanel(wall);
+        // Получаем DOM-элементы здесь
+        const domUi = UI.getDomElements();
+
+        // Показываем панель свойств стены и устанавливаем значения
+        domUi.wallPropertiesPanel.classList.remove('hidden');
+        domUi.selectedObjectControls.classList.add('hidden');
+
+        // Рассчитываем и устанавливаем ОБЩУЮ толщину в инпут
+        const totalThickness = (wall.thicknessL ?? 0) + (wall.thicknessR ?? 0);
+        domUi.wallThicknessInput.value = totalThickness.toFixed(2); // Форматируем до 2 знаков
+
+        domUi.wallHeightInput.value = wall.height ?? Config.DEFAULT_WALL_HEIGHT; // Используем сохраненную высоту
+
+    } else {
+        UI.hideWallPropertiesPanel(); // Скрываем, если стена не найдена
     }
-    if (editorState.activeViewMode === 'plan') render2DPlan();
+
+    if (editorState.activeViewMode === 'plan') {
+        import('./editorInteraction2D.js').then(mod => mod.render2DPlan()); // Обновляем 2D план
+    }
 }
+// --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
 export function selectVertex(vertexInfo) { // vertexInfo = { wallId, type, initialPosAtDragStart, vertexRef }
     const dom = getDomElements();
@@ -143,24 +161,22 @@ export function toggleAddWallMode() {
     if (editorState.activeViewMode === 'plan') render2DPlan(); // Redraw to show/hide temp line or cursor change
 }
 
-// --- Обновленная функция изменения свойств стены ---
+// --- ИЗМЕНЕНИЕ: updateWallPropertiesFromInput читает общую толщину, делит и сохраняет L/R ---
 export function updateWallPropertiesFromInput() {
-    const dom = UI.getDomElements(); // Используем getDomElements из UI
+    const domUi = UI.getDomElements();
     if (editorState.selectedWallId) {
         const wall = editorState.walls.find(w => w.id === editorState.selectedWallId);
         if (wall) {
             let changed = false;
-            // --- ИЗМЕНЕНИЕ: Обновляем только толщину L/R, не общую ---
-            // (Предполагаем, что input'ы названы так, или нужно добавить отдельные)
-            // Если input один (wallThicknessInput), то делим пополам:
-            const newTotalThickness = parseFloat(dom.wallThicknessInput.value);
-            let newThicknessL = wall.thicknessL;
-            let newThicknessR = wall.thicknessR;
+
+            // Читаем ОБЩУЮ толщину из инпута
+            const newTotalThickness = parseFloat(domUi.wallThicknessInput.value);
             if (!isNaN(newTotalThickness) && newTotalThickness > 0.01) {
-                // Делим поровну от осевой линии
-                newThicknessL = newTotalThickness / 2;
-                newThicknessR = newTotalThickness / 2;
-                if (Math.abs(wall.thicknessL - newThicknessL) > 1e-6 || Math.abs(wall.thicknessR - newThicknessR) > 1e-6) {
+                // Делим поровну от осевой линии (можно добавить другую логику)
+                const newThicknessL = newTotalThickness / 2;
+                const newThicknessR = newTotalThickness / 2;
+                // Проверяем, изменились ли значения L или R
+                if (Math.abs((wall.thicknessL ?? 0) - newThicknessL) > 1e-6 || Math.abs((wall.thicknessR ?? 0) - newThicknessR) > 1e-6) {
                     wall.thicknessL = newThicknessL;
                     wall.thicknessR = newThicknessR;
                     changed = true;
@@ -168,25 +184,26 @@ export function updateWallPropertiesFromInput() {
             }
 
             // Обновляем высоту
-            const newHeight = parseFloat(dom.wallHeightInput.value);
-            if (!isNaN(newHeight) && newHeight > 0 && Math.abs(wall.height - newHeight) > 1e-6) {
+            const newHeight = parseFloat(domUi.wallHeightInput.value);
+            if (!isNaN(newHeight) && newHeight > 0 && Math.abs((wall.height ?? 0) - newHeight) > 1e-6) {
                 wall.height = newHeight;
                 changed = true;
             }
 
             if (changed) {
-                // --- ИСПРАВЛЕНИЕ: Пересчитываем вершины ---
-                const recalculated = recalculateWallVertices(wall);
+                // Пересчитываем вершины, т.к. толщина или высота могли измениться
+                const recalculated = recalculateWallVertices(wall); // Используем импортированную функцию
 
                 if (recalculated) {
                     // Обновляем 2D и 3D
-                    import('./editorInteraction2D.js').then(mod => mod.render2DPlan()); // Динамический импорт
-                    import('./editorObjects.js').then(mod => mod.createOrUpdateAll3DWalls()); // Динамический импорт
+                    import('./editorInteraction2D.js').then(mod => mod.render2DPlan());
+                    import('./editorObjects.js').then(mod => mod.createOrUpdateAll3DWalls());
                 }
             }
         }
     }
 }
+// --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
 export function initSelectionControls() {
     const domUi = getDomElements(); // Get main UI elements cache

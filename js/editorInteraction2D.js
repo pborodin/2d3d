@@ -6,6 +6,43 @@ import { getPointerXY, pointsAreEqual } from './utils.js';
 import { selectObject, deselectEverything, selectWall, selectVertex } from './editorSelection.js';
 // Динамически импортируем editorObjects при необходимости
 
+// --- Кэш для SVG Image объектов ---
+const svgImageCache = new Map(); // Используем Map для кэша: Map<string, {image: HTMLImageElement, loaded: boolean}>
+
+// --- Функция для загрузки и кэширования SVG ---
+function getOrCreateSvgImage(type, svgString) {
+    if (!type || !svgString) return null;
+
+    if (svgImageCache.has(type)) {
+        return svgImageCache.get(type); // Возвращаем объект из кэша {image, loaded}
+    }
+
+    // Создаем объект Image
+    const image = new Image();
+    const cacheEntry = { image: image, loaded: false };
+    svgImageCache.set(type, cacheEntry); // Добавляем в кэш СРАЗУ
+
+    image.onload = () => {
+        cacheEntry.loaded = true;
+        // Важно: нужно перерисовать canvas ПОСЛЕ загрузки изображения,
+        // если оно рисовалось в первый раз. Проще всего вызывать render2DPlan().
+        // Но делать это здесь может быть не очень эффективно.
+        // Пока оставим так, изображение появится на следующем кадре render2DPlan.
+        // console.log(`SVG image loaded for type: ${type}`);
+        render2DPlan(); // Принудительно перерисовываем после загрузки
+    };
+    image.onerror = (err) => {
+        console.error(`Error loading SVG image for type: ${type}`, err);
+        svgImageCache.delete(type); // Удаляем из кэша при ошибке
+    };
+
+    // Устанавливаем Data URL
+    // Используем btoa для кодирования в Base64, чтобы избежать проблем со спецсимволами SVG в URL
+    const base64Svg = btoa(unescape(encodeURIComponent(svgString))); // Правильное кодирование для base64
+    image.src = `data:image/svg+xml;base64,${base64Svg}`;
+
+    return cacheEntry; // Возвращаем объект {image, loaded}
+}
 
 // --- ИСПРАВЛЕННАЯ async функция обновления соединенных осевых вершин ---
 async function updateConnectedVertices(originalPos, newPos) {
@@ -89,18 +126,81 @@ export function render2DPlan() {
         ctx.fill(); ctx.stroke();
     });
 
-    // Draw Furniture
+    // Рисуем Мебель
     editorState.furniture.forEach(item => {
-        const itemPlanDim = item.userData.planDimensions; if (!itemPlanDim) return;
+        const itemData = item.userData?.itemData;
+        const dims = itemData?.realDimensionsMM; // Теперь берем из itemData
+        const svgString = itemData?.svgIconString;
+        const type = itemData?.type;
+
+        // --- ДОБАВИМ ЛОГГИРОВАНИЕ ---
+        // console.log(`Rendering furniture: ${type || 'unknown'}`, { hasItemData: !!itemData, hasDims: !!dims, hasSvg: !!svgString });
+
+        if (!itemData || !dims || !svgString || !type) {
+            // --- ОТРИСОВКА СТАРЫХ planDimensions ---
+            const planDims = item.userData?.planDimensions;
+            if (planDims) {
+                // console.log(`Falling back to planDimensions for ${type || 'unknown'}`);
+                const x = item.position.x * scale; const z = item.position.z * scale; const rotation = item.rotation.y;
+                ctx.save(); ctx.translate(x, z); ctx.rotate(rotation);
+                ctx.fillStyle = "#AAAAAA"; ctx.strokeStyle = "#555555"; ctx.lineWidth = 1;
+                if (planDims.shape === 'rect') { const w = planDims.width * scale; const d = planDims.depth * scale; ctx.fillRect(-w / 2, -d / 2, w, d); ctx.strokeRect(-w / 2, -d / 2, w, d); }
+                else if (planDims.shape === 'circle') { const r = planDims.radius * scale; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+                ctx.restore();
+            } else {
+                // console.log(`Skipping ${type || 'unknown'} - no planDimensions either.`);
+            }
+            return;
+        }
+        // --- КОНЕЦ ОТРИСОВКИ СТАРЫХ ---
+
+
+        const cacheEntry = getOrCreateSvgImage(type, svgString);
         const x = item.position.x * scale; const z = item.position.z * scale; const rotation = item.rotation.y;
-        ctx.save(); ctx.translate(x, z); ctx.rotate(rotation);
-        ctx.fillStyle = Config.COLORS.PLAN_FURNITURE_DEFAULT_FILL;
-        ctx.strokeStyle = (item === editorState.selectedObject) ? Config.COLORS.PLAN_FURNITURE_SELECTED_STROKE : Config.COLORS.PLAN_FURNITURE_DEFAULT_STROKE;
-        ctx.lineWidth = (item === editorState.selectedObject) ? 2 : 1;
-        if (itemPlanDim.shape === 'rect') { const w = itemPlanDim.width * scale; const d = itemPlanDim.depth * scale; ctx.fillRect(-w / 2, -d / 2, w, d); ctx.strokeRect(-w / 2, -d / 2, w, d); }
-        else if (itemPlanDim.shape === 'circle') { const r = itemPlanDim.radius * scale; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+        const drawWidthPx = (dims.width / 1000) * scale;
+        const drawDepthPx = (dims.depth / 1000) * scale;
+
+        ctx.save();
+        ctx.translate(x, z);
+        ctx.rotate(rotation);
+
+        let drewSomething = false;
+        if (cacheEntry && cacheEntry.loaded && !cacheEntry.error) {
+            try {
+                // console.log(`Drawing SVG image for ${type}`);
+                ctx.drawImage(cacheEntry.image, -drawWidthPx / 2, -drawDepthPx / 2, drawWidthPx, drawDepthPx);
+                drewSomething = true;
+            } catch (e) {
+                console.error("Error in ctx.drawImage:", type, e);
+                // Рисуем красный квадрат при ошибке отрисовки
+                ctx.fillStyle = "red";
+                ctx.fillRect(-drawWidthPx / 2, -drawDepthPx / 2, drawWidthPx, drawDepthPx);
+                drewSomething = true;
+            }
+        }
+
+        // Рисуем плейсхолдер, если еще грузится ИЛИ если была ошибка загрузки/кодирования
+        if (!drewSomething || (cacheEntry && !cacheEntry.loaded) || (cacheEntry && cacheEntry.error)) {
+            if (!drewSomething && cacheEntry?.error) {
+                // console.log(`Drawing RED placeholder due to load/encode error for ${type}`);
+                ctx.fillStyle = "rgba(255, 0, 0, 0.5)"; // Красный для ошибки
+            } else {
+                // console.log(`Drawing loading/default placeholder for ${type}`);
+                ctx.fillStyle = "rgba(100, 100, 100, 0.5)"; // Серый для загрузки
+            }
+            ctx.strokeStyle = "#888888"; ctx.lineWidth = 1;
+            ctx.fillRect(-drawWidthPx / 2, -drawDepthPx / 2, drawWidthPx, drawDepthPx);
+            ctx.strokeRect(-drawWidthPx / 2, -drawDepthPx / 2, drawWidthPx, drawDepthPx);
+        }
+
+        // Рамка выделения
+        if (item === editorState.selectedObject) {
+            ctx.strokeStyle = Config.COLORS.PLAN_FURNITURE_SELECTED_STROKE; ctx.lineWidth = 2;
+            ctx.strokeRect(-drawWidthPx / 2, -drawDepthPx / 2, drawWidthPx, drawDepthPx);
+        }
         ctx.restore();
     });
+    // --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
     // Draw temporary new wall line (осевая)
     if (editorState.isAddingWallMode && editorState.newWallStartPoint && editorState.currentMouseWorldPos2D) {

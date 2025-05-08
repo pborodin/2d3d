@@ -238,62 +238,59 @@ export function createOrUpdateAll3DWalls() {
 }
 
 
-// --- Furniture Creation Functions ---
-function createTable() {
-    const group = new THREE.Group();
-    const topGeo = new THREE.BoxGeometry(2, 0.2, 1);
-    const legGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7, metalness: 0.2 });
-    const top = new THREE.Mesh(topGeo, mat); top.position.y = 1; top.castShadow = true; top.receiveShadow = true; group.add(top);
-    [{x: -0.8, z: -0.35}, {x: 0.8, z: -0.35}, {x: -0.8, z: 0.35}, {x: 0.8, z: 0.35}].forEach(p => {
-        const leg = new THREE.Mesh(legGeo, mat); leg.position.set(p.x, 0.5, p.z); leg.castShadow = true; leg.receiveShadow = true; group.add(leg); });
-    group.userData.planDimensions = { width: 2, depth: 1, shape: 'rect' };
-    group.userData.itemData = { id: 'table-' + Date.now() + Math.random().toString(36).substr(2, 5), name: 'Стол обеденный Sky', sku: '105306822', price: 12000, image: 'https://images.pexels.com/photos/2098913/pexels-photo-2098913.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop', type: 'table' };
-    return group;
-}
-function createSofa() {
-    const group = new THREE.Group(); const mat = new THREE.MeshStandardMaterial({ color: 0x607D8B, roughness: 0.8, metalness: 0.1 });
-    const base = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 1.2), mat); base.position.y = 0.4; base.castShadow = true; base.receiveShadow = true; group.add(base);
-    const back = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 0.3), mat); back.position.set(0, 0.8 + 0.5, -1.2/2 + 0.3/2); back.castShadow = true; back.receiveShadow = true; group.add(back);
-    const armGeo = new THREE.BoxGeometry(0.3, 0.6, 1.2);
-    const lArm = new THREE.Mesh(armGeo, mat); lArm.position.set(-3/2 + 0.3/2, 0.4 + 0.2, 0); lArm.castShadow = true; lArm.receiveShadow = true; group.add(lArm);
-    const rArm = new THREE.Mesh(armGeo, mat); rArm.position.set(3/2 - 0.3/2, 0.4 + 0.2, 0); rArm.castShadow = true; rArm.receiveShadow = true; group.add(rArm);
-    group.userData.planDimensions = { width: 3, depth: 1.2, shape: 'rect' };
-    group.userData.itemData = { id: 'sofa-' + Date.now() + Math.random().toString(36).substr(2, 5), name: 'Угловой диван-кровать', sku: '40530683', price: 52000, image: 'https://images.pexels.com/photos/4846106/pexels-photo-4846106.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop', type: 'sofa' };
-    return group;
-}
-function createLamp() {
-    const group = new THREE.Group(); const standMat = new THREE.MeshStandardMaterial({ color: 0xB0BEC5, roughness: 0.4, metalness: 0.6 });
-    const shadeMat = new THREE.MeshStandardMaterial({ color: 0xFFFDD0, side: THREE.DoubleSide, roughness: 0.9 });
-    const standBaseGeo = new THREE.CylinderGeometry(0.2, 0.25, 0.1, 12); const standBase = new THREE.Mesh(standBaseGeo, standMat); standBase.position.y = 0.05; standBase.castShadow = true; standBase.receiveShadow = true; group.add(standBase);
-    const standPoleGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.4, 8); const standPole = new THREE.Mesh(standPoleGeo, standMat); standPole.position.y = 0.1 + 0.7; standPole.castShadow = true; standPole.receiveShadow = true; group.add(standPole);
-    const shadeGeo = new THREE.CylinderGeometry(0.3, 0.5, 0.4, 12, 1, false); const shade = new THREE.Mesh(shadeGeo, shadeMat); shade.position.y = 1.5 + 0.2; shade.castShadow = true; group.add(shade);
-    group.userData.planDimensions = { radius: 0.5, shape: 'circle' };
-    group.userData.itemData = { id: 'lamp-' + Date.now() + Math.random().toString(36).substr(2, 5), name: 'Напольная лампа Modern', sku: '200100500', price: 3500, image: 'https://images.pexels.com/photos/7005386/pexels-photo-7005386.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop', type: 'lamp' };
-    return group;
-}
-export const furnitureCreationFunctions = { table: createTable, sofa: createSofa, lamp: createLamp };
-
 // --- Furniture Management ---
 export async function addFurnitureObject(type) {
+    // Динамически импортируем нужные модули
     const editorCoreModule = await import('./editorCore.js');
     const editorSelectionModule = await import('./editorSelection.js');
+
     editorCoreModule.ensureInitialized();
     if (!editorState.scene) { console.error("addFurniture: Scene not found!"); return; }
-    const creationFunction = furnitureCreationFunctions[type];
-    if (!creationFunction) { console.error(`Unknown furniture type: ${type}`); return; }
-    const furnitureItem = creationFunction();
+
+    let meshCreator;
+    try {
+        // Формируем имя файла и имя функции (Table.js -> createTableMesh)
+        const fileName = type.charAt(0).toUpperCase() + type.slice(1);
+        const module = await import(`./furniture/${fileName}.js`); // Динамический импорт
+        const creatorFunctionName = `create${fileName}Mesh`;
+
+        if (typeof module[creatorFunctionName] !== 'function') {
+            throw new Error(`Module ./furniture/${fileName}.js does not export function ${creatorFunctionName}`);
+        }
+        meshCreator = module[creatorFunctionName]; // Получаем функцию создания меша
+
+    } catch (error) {
+        console.error(`Failed to load or find mesh creator for type "${type}":`, error);
+        return; // Прерываем, если не удалось загрузить модуль
+    }
+
+    const furnitureItem = meshCreator(); // Вызываем функцию создания меша
+    if (!furnitureItem || !(furnitureItem.isObject3D)) { // Проверяем, что вернулся объект Three.js
+        console.error(`Mesh creator for type "${type}" did not return a valid THREE.Object3D.`);
+        return;
+    }
+    // Проверяем наличие необходимых userData (опционально, но полезно)
+    if (!furnitureItem.userData.planDimensions || !furnitureItem.userData.itemData) {
+        console.warn(`Furniture item of type "${type}" created without necessary userData (planDimensions, itemData).`);
+    }
+
+
     const limit = Config.FURNITURE_PLACEMENT_LIMIT;
     furnitureItem.position.set( Math.random() * limit * 1.6 - limit * 0.8, 0, Math.random() * limit * 1.6 - limit * 0.8 );
-    editorState.scene.add(furnitureItem); editorState.furniture.push(furnitureItem);
-    editorSelectionModule.selectObject(furnitureItem);
+    editorState.scene.add(furnitureItem);
+    editorState.furniture.push(furnitureItem);
+
+    editorSelectionModule.selectObject(furnitureItem); // Выделяем добавленный объект
+
     if (editorState.activeViewMode === 'plan') {
-        const editorInteraction2DModule = await import('./editorInteraction2D.js');
-        editorInteraction2DModule.render2DPlan(); // 2D план нужно будет адаптировать!
+        // Динамически импортируем и рендерим 2D план
+        import('./editorInteraction2D.js').then(mod => mod.render2DPlan());
     } else if (!editorState.animationFrameId && editorState.renderer) {
-        editorCoreModule.startAnimationLoop();
+        editorCoreModule.startAnimationLoop(); // Запускаем рендер, если не был запущен
     }
 }
+
+
 export function removeFurnitureById(itemId) {
     const indexToRemove = editorState.furniture.findIndex(f => f.userData.itemData && f.userData.itemData.id === itemId);
     if (indexToRemove > -1) {
