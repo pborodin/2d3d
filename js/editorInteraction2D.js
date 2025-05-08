@@ -314,14 +314,17 @@ export function on2DPlanPointerMove(event) {
     if (needs3DUpdate) import('./editorObjects.js').then(mod => mod.createOrUpdateAll3DWalls());
 }
 
+// --- ИСПРАВЛЕННЫЙ on2DPlanPointerUp ---
 export function on2DPlanPointerUp(event) {
     if (editorState.activeViewMode !== 'plan') return;
     const posData = get2DPlanPointerWorldPosition(event.changedTouches ? event.changedTouches[0] : event);
 
+    // Логика добавления стены
     if (editorState.isAddingWallMode && editorState.newWallStartPoint && (event.button === 0 || (event.changedTouches && event.changedTouches.length > 0))) {
         const pos = posData.valid ? posData : editorState.currentMouseWorldPos2D;
         if (pos) {
             let finalEndX = pos.x; let finalEndZ = pos.z; let snapped = false;
+            // Логика снаппинга finalEndX, finalEndZ...
             for (const wall of editorState.walls) {
                 if (!wall.vertices || wall.vertices.length !== 6) continue; const v0 = wall.vertices[0]; const v3 = wall.vertices[3];
                 if (Math.hypot(finalEndX - v0.x, finalEndZ - v0.z) < Config.SNAP_DISTANCE) { finalEndX = v0.x; finalEndZ = v0.z; snapped = true; break; }
@@ -331,19 +334,31 @@ export function on2DPlanPointerUp(event) {
                 if (Math.abs(finalEndX - editorState.newWallStartPoint.x) < Config.SNAP_DISTANCE) finalEndX = editorState.newWallStartPoint.x;
                 if (Math.abs(finalEndZ - editorState.newWallStartPoint.z) < Config.SNAP_DISTANCE) finalEndZ = editorState.newWallStartPoint.z;
             }
+
+            // Проверяем длину
             if (Math.hypot(finalEndX - editorState.newWallStartPoint.x, finalEndZ - editorState.newWallStartPoint.z) > 0.1) {
+                // --- ИСПРАВЛЕНИЕ: Захватываем объекты ---
+                const startPointObject = { ...editorState.newWallStartPoint }; // Копия начальной точки
+                const endPointObject = { x: finalEndX, z: finalEndZ };       // Новая конечная точка
+
                 import('./editorObjects.js').then(editorObjectsModule => {
-                    editorObjectsModule.addWall(editorState.newWallStartPoint, {x: finalEndX, z: finalEndZ}); // Передаем объекты
+                    // Передаем объекты в addWall
+                    editorObjectsModule.addWall(startPointObject, endPointObject);
                     render2DPlan();
                 }).catch(err => console.error("Failed to load editorObjects.js for addWall:", err));
             }
         }
-        editorState.newWallStartPoint = null; editorState.currentMouseWorldPos2D = null;
-        render2DPlan();
+        // Сбрасываем ПОСЛЕ инициирования импорта
+        editorState.newWallStartPoint = null;
+        editorState.currentMouseWorldPos2D = null;
+        render2DPlan(); // Убираем временную линию
     }
 
+    // Сброс флагов перетаскивания
     if (event.button === 0 || (event.changedTouches && event.changedTouches.length > 0)) {
-        editorState.isDraggingVertex = false; editorState.isDraggingWall = false; editorState.isDragging2D = false;
+        editorState.isDraggingVertex = false;
+        editorState.isDraggingWall = false;
+        editorState.isDragging2D = false;
     } else if (event.button === 2) {
         editorState.isPanning2D = false;
     }
