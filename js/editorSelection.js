@@ -28,27 +28,16 @@ export function selectObject(object) {
 
 // --- ИЗМЕНЕНИЕ: selectWall читает толщины и считает общую ---
 export function selectWall(wallId) {
-    // if (editorState.selectedWallId === wallId && !UI.getDomElements().wallPropertiesPanel.classList.contains('hidden')) return; // Оптимизация, если панель уже видима
     deselectEverything();
 
     editorState.selectedWallId = wallId;
     const wall = editorState.walls.find(w => w.id === wallId);
     if (wall) {
-        // Получаем DOM-элементы здесь
-        const domUi = UI.getDomElements();
-
-        // Показываем панель свойств стены и устанавливаем значения
-        domUi.wallPropertiesPanel.classList.remove('hidden');
-        domUi.selectedObjectControls.classList.add('hidden');
-
-        // Рассчитываем и устанавливаем ОБЩУЮ толщину в инпут
-        const totalThickness = (wall.thicknessL ?? 0) + (wall.thicknessR ?? 0);
-        domUi.wallThicknessInput.value = totalThickness.toFixed(2); // Форматируем до 2 знаков
-
-        domUi.wallHeightInput.value = wall.height ?? Config.DEFAULT_WALL_HEIGHT; // Используем сохраненную высоту
+// --- ИЗМЕНЕНИЕ: Используем новую функцию показа ---
+        UI.showWallPropertiesControls(wall);
 
     } else {
-        UI.hideWallPropertiesPanel(); // Скрываем, если стена не найдена
+        UI.hideWallPropertiesControls(); // Скрываем, если стена не найдена
     }
 
     if (editorState.activeViewMode === 'plan') {
@@ -66,7 +55,8 @@ export function selectVertex(vertexInfo) { // vertexInfo = { wallId, type, initi
     editorState.selectedWallId = vertexInfo.wallId; // Also select the wall the vertex belongs to
     const wall = editorState.walls.find(w => w.id === vertexInfo.wallId);
     if (wall) {
-        UI.showWallPropertiesPanel(wall); // Show properties of the wall this vertex belongs to
+        // --- ИЗМЕНЕНИЕ: Используем новую функцию показа ---
+        UI.showWallPropertiesControls(wall); // Показываем панель для связанной стены
     }
     if (editorState.activeViewMode === 'plan') render2DPlan();
 }
@@ -88,10 +78,11 @@ export function deselectEverything() {
     editorState.selectedWallId = null;
     editorState.selectedVertexInfo = null;
 
-    UI.hideSelectedObjectControls();
-    UI.hideWallPropertiesPanel();
+    UI.hideSelectedObjectControls(); // Скрываем панель мебели
+    // --- ИЗМЕНЕНИЕ: Используем новую функцию скрытия ---
+    UI.hideWallPropertiesControls(); // Скрываем bottom sheet стены
 
-    // Reset interaction flags
+    // ... (сброс флагов перетаскивания) ...
     editorState.isDragging3D = false;
     editorState.isDragging2D = false;
     editorState.isDraggingVertex = false;

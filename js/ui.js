@@ -32,19 +32,22 @@ const dom = {
     viewMode3DButton: document.getElementById('viewMode3D'),
     viewModePseudo3DButton: document.getElementById('viewModePseudo3D'),
     viewModePlanButton: document.getElementById('viewModePlan'),
-    addWallButton: document.getElementById('addWallButton'), // Уже должен быть здесь
+    addWallButton: document.getElementById('addWallButton'),
 
     selectedObjectControls: document.getElementById('selectedObjectControls'),
     // Элементы внутри selectedObjectControls (для мебели)
-    rotateLeftButton: document.getElementById('rotateLeftButton'),     // <--- УБЕДИТЕСЬ, ЧТО ЭТО ЕСТЬ
-    rotateRightButton: document.getElementById('rotateRightButton'),   // <--- УБЕДИТЕСЬ, ЧТО ЭТО ЕСТЬ
-    deleteButton: document.getElementById('deleteButton'),             // <--- УБЕДИТЕСЬ, ЧТО ЭТО ЕСТЬ (для мебели)
+    rotateLeftButton: document.getElementById('rotateLeftButton'),
+    rotateRightButton: document.getElementById('rotateRightButton'),
+    deleteButton: document.getElementById('deleteButton'),
 
-    // Панель свойств стены и ее элементы
-    wallPropertiesPanel: document.getElementById('wallPropertiesPanel'),
-    wallThicknessInput: document.getElementById('wallThicknessInput'), // <--- УБЕДИТЕСЬ, ЧТО ЭТО ЕСТЬ
-    wallHeightInput: document.getElementById('wallHeightInput'),       // <--- УБЕДИТЕСЬ, ЧТО ЭТО ЕСТЬ
-    deleteWallButton: document.getElementById('deleteWallButton'),     // <--- УБЕДИТЕСЬ, ЧТО ЭТО ЕСТЬ
+    // Панель свойств стены и ее элементы (Bottom Sheet)
+    wallPropertiesBottomSheet: document.getElementById('wallPropertiesBottomSheet'),
+    wallThicknessInput: document.getElementById('wallThicknessInput'),
+    wallHeightInput: document.getElementById('wallHeightInput'),
+    deleteWallButton: document.getElementById('deleteWallButton'), // Кнопка удаления стены (маленькая с иконкой)
+    confirmCloseWallPropertiesButton: document.getElementById('confirmCloseWallPropertiesButton'), // Новая кнопка "Закрыть" рядом с удалением
+    closeWallPropertiesSheetCornerButton: document.getElementById('closeWallPropertiesSheetCornerButton'), // Кнопка закрытия в углу
+
 
     // Estimate screen UI
     estimateItemsContainer: document.getElementById('estimateItemsContainer'),
@@ -156,16 +159,42 @@ export function toggleAddWallButtonActive(isActive) {
 }
 
 
-export function showSelectedObjectControls() { dom.selectedObjectControls.classList.remove('hidden'); dom.wallPropertiesPanel.classList.add('hidden');}
-export function hideSelectedObjectControls() { dom.selectedObjectControls.classList.add('hidden');}
-export function showWallPropertiesPanel(wall) {
-    dom.wallPropertiesPanel.classList.remove('hidden');
-    dom.selectedObjectControls.classList.add('hidden');
-    dom.wallThicknessInput.value = wall.thickness;
-    dom.wallHeightInput.value = wall.height;
+export function showSelectedObjectControls() {
+    dom.selectedObjectControls.classList.remove('hidden');
+    if (dom.wallPropertiesBottomSheet) {
+        dom.wallPropertiesBottomSheet.classList.remove('visible');
+    }
 }
-export function hideWallPropertiesPanel() { dom.wallPropertiesPanel.classList.add('hidden');}
+export function hideSelectedObjectControls() { dom.selectedObjectControls.classList.add('hidden');}
 
+export function showWallPropertiesControls(wall) {
+    if (!wall || !dom.wallPropertiesBottomSheet) return;
+
+    const totalThickness = (wall.thicknessL ?? 0) + (wall.thicknessR ?? 0);
+    dom.wallThicknessInput.value = totalThickness.toFixed(2);
+    dom.wallHeightInput.value = wall.height ?? Config.DEFAULT_WALL_HEIGHT;
+
+    dom.selectedObjectControls.classList.add('hidden');
+    dom.wallPropertiesBottomSheet.classList.add('visible');
+}
+export function hideWallPropertiesControls() {
+    if (!dom.wallPropertiesBottomSheet) return;
+    dom.wallPropertiesBottomSheet.classList.remove('visible');
+}
+
+export function initExtraUIActions(deselectCallback) {
+    const closeAction = () => {
+        hideWallPropertiesControls();
+        if (deselectCallback) deselectCallback();
+    };
+
+    if (dom.closeWallPropertiesSheetCornerButton) {
+        dom.closeWallPropertiesSheetCornerButton.addEventListener('click', closeAction);
+    }
+    if (dom.confirmCloseWallPropertiesButton) {
+        dom.confirmCloseWallPropertiesButton.addEventListener('click', closeAction);
+    }
+}
 
 // --- Estimate Screen ---
 export function renderEstimateScreen(furnitureItems, onItemSelectedChange, onItemRemoved, onSelectAll, onRemoveAll) {

@@ -160,17 +160,42 @@
             fill: currentColor;
         }
 
-        #wallPropertiesPanel { /* Specific styles for wall properties */
-            align-items: stretch; /* Make inputs full width */
-        }
-        #wallPropertiesPanel input {
-            background-color: #3a3a5a; /* Darker input background */
-            border: 1px solid #4a4a6a;
-            color: #e0e0e0; /* Text color for inputs */
-            padding: 0.25rem 0.5rem; /* Padding for inputs */
-            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        /*#wallPropertiesPanel { !* Specific styles for wall properties *!*/
+        /*    align-items: stretch; !* Make inputs full width *!*/
+        /*}*/
+        /*#wallPropertiesPanel input {*/
+        /*    background-color: #3a3a5a; !* Darker input background *!*/
+        /*    border: 1px solid #4a4a6a;*/
+        /*    color: #e0e0e0; !* Text color for inputs *!*/
+        /*    padding: 0.25rem 0.5rem; !* Padding for inputs *!*/
+        /*    box-sizing: border-box; !* Include padding and border in the element's total width and height *!*/
+        /*}*/
+
+        /* НОВЫЕ СТИЛИ для Bottom Sheet */
+        #wallPropertiesBottomSheet {
+            /* Позиционирование и базовые стили уже заданы inline/Tailwind */
+            /* Добавим максимальную высоту и прокрутку, если контента будет много */
+            max-height: 50vh; /* Например, не более половины экрана */
+            overflow-y: auto;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.3); /* Тень сверху */
         }
 
+        #wallPropertiesBottomSheet.visible {
+            transform: translateY(0); /* Показываем панель */
+        }
+
+        /* Стили для инпутов внутри sheet для единообразия */
+        #wallPropertiesBottomSheet input[type="number"] {
+            appearance: textfield; /* Убираем стрелочки в Firefox */
+            -moz-appearance: textfield;
+        }
+        #wallPropertiesBottomSheet input[type="number"]::-webkit-inner-spin-button,
+        #wallPropertiesBottomSheet input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none; /* Убираем стрелочки в Chrome/Safari */
+            margin: 0;
+        }
+
+        /* ... остальные стили ... */
 
         .instructions {
             font-size: 0.75rem;
@@ -371,16 +396,16 @@
                     <svg class="md:w-7 md:h-7" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"></path></svg>
                 </button>
             </div>
-            <div id="wallPropertiesPanel" class="selected-object-controls hidden md:gap-2" style="flex-direction: column;">
-                <h4 class="text-xs text-center text-gray-300 mb-1">Свойства стены</h4>
-                <label class="text-xs text-gray-400">Толщина (м):</label>
-                <input type="number" id="wallThicknessInput" step="0.01" class="bg-gray-700 text-white text-sm rounded p-1 w-full mb-1">
-                <label class="text-xs text-gray-400">Высота (м):</label>
-                <input type="number" id="wallHeightInput" step="0.1" class="bg-gray-700 text-white text-sm rounded p-1 w-full mb-2">
-                <button id="deleteWallButton" class="btn btn-danger btn-block md:min-w-[auto] md:h-[auto] md:p-1.5 text-xs" title="Удалить стену">
-                    Удалить стену
-                </button>
-            </div>
+            <!--            <div id="wallPropertiesPanel" class="selected-object-controls hidden md:gap-2" style="flex-direction: column;">-->
+            <!--                <h4 class="text-xs text-center text-gray-300 mb-1">Свойства стены</h4>-->
+            <!--                <label class="text-xs text-gray-400">Толщина (м):</label>-->
+            <!--                <input type="number" id="wallThicknessInput" step="0.01" class="bg-gray-700 text-white text-sm rounded p-1 w-full mb-1">-->
+            <!--                <label class="text-xs text-gray-400">Высота (м):</label>-->
+            <!--                <input type="number" id="wallHeightInput" step="0.1" class="bg-gray-700 text-white text-sm rounded p-1 w-full mb-2">-->
+            <!--                <button id="deleteWallButton" class="btn btn-danger btn-block md:min-w-[auto] md:h-[auto] md:p-1.5 text-xs" title="Удалить стену">-->
+            <!--                    Удалить стену-->
+            <!--                </button>-->
+            <!--            </div>-->
 
             <div id="threejs-canvas-container">
                 <canvas id="threejs-canvas"></canvas>
@@ -442,6 +467,31 @@
         </div>
 
     </main>
+    <!-- === НОВЫЙ БЛОК: Bottom Sheet для свойств стены === -->
+    <div id="wallPropertiesBottomSheet" class="fixed bottom-0 left-0 right-0 bg-[#24243e] border-t border-gray-600 p-4 z-20 transform translate-y-full transition-transform duration-300 ease-in-out">
+        <h4 class="text-sm font-semibold text-center text-gray-300 mb-3">Свойства стены</h4>
+        <div class="space-y-3">
+            <div>
+                <label for="wallThicknessInput" class="text-xs text-gray-400 block mb-1">Толщина (м):</label>
+                <input type="number" id="wallThicknessInput" step="0.01" class="bg-[#3a3a5a] border border-[#4a4a6a] text-white text-sm rounded p-2 w-full block box-border">
+            </div>
+            <div>
+                <label for="wallHeightInput" class="text-xs text-gray-400 block mb-1">Высота (м):</label>
+                <input type="number" id="wallHeightInput" step="0.1" class="bg-[#3a3a5a] border border-[#4a4a6a] text-white text-sm rounded p-2 w-full block box-border">
+            </div>
+            <div class="flex gap-2 mt-4 pt-2 border-t border-gray-700">
+                <button id="deleteWallButton" class="btn btn-danger p-0 w-10 h-10 flex items-center justify-center flex-shrink-0" title="Удалить стену">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"></path></svg>
+                </button>
+                <button id="confirmCloseWallPropertiesButton" class="btn btn-secondary flex-grow text-sm h-10">Закрыть</button>
+            </div>
+        </div>
+        <!-- Кнопка закрытия в углу -->
+        <button id="closeWallPropertiesSheetCornerButton" class="absolute top-2 right-2 text-gray-400 hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+    </div>
+    <!-- === КОНЕЦ Bottom Sheet === -->
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

@@ -154,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     UI.initStyleSelection((styleData) => { appSelectedStyle = styleData; });
     EditorControls.initEditorControls();
     initSelectionControls();
+    UI.initExtraUIActions(deselectEverything); // Инициализация кнопки закрытия bottom sheet
 
     UI.initEstimateScreenControls(
         (isChecked) => { // onSelectAll
