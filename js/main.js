@@ -21,6 +21,7 @@ const mainDom = {
     openEditorButton: document.getElementById('openEditorButton'),
     backToResultsButton: document.getElementById('backToResultsButton'),
     openEstimateButtonEditor: document.getElementById('openEstimateButton'), // From editor toolbar
+    openEditorFromHomeButton: document.getElementById('openEditorFromHome'), // Кнопка с экрана 1
     // Estimate screen buttons
     checkoutButton: document.getElementById('checkoutButton'),
     checkoutCreditButton: document.getElementById('checkoutCreditButton'),
@@ -126,6 +127,15 @@ mainDom.startOverButton.addEventListener('click', () => {
 });
 
 mainDom.openEstimateButtonEditor.addEventListener('click', () => navigateTo(5));
+
+mainDom.openEditorFromHomeButton.addEventListener('click', () => {
+    // Можно сбросить состояние загрузки фото и стиля, если нужно
+    // appUploadedFile = null;
+    // appSelectedStyle = { style: null, name: '', image: Config.PLACEHOLDER_IMAGE_URL };
+    // UI.resetPhotoUpload(); // Если сбрасываем
+    // UI.resetStyleSelection(); // Если сбрасываем
+    navigateTo(4); // Просто переходим на экран редактора
+});
 
 mainDom.addTableButton.addEventListener('click', async () => {
     await addFurnitureObject('table');
